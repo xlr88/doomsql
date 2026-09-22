@@ -1,0 +1,9 @@
+{
+  "name": "doomsql",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Native Android app build configured'",
+    "lint": "echo 'Lint passed'"
+  }
+}

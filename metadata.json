@@ -1,0 +1,6 @@
+{
+  "name": "DoomSQL",
+  "description": "Practice SQL interview questions offline with an in-memory SQLite sandbox, instant query feedback, and progress tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
