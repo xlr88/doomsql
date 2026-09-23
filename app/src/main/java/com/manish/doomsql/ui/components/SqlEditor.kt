@@ -8,21 +8,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +35,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -50,7 +55,8 @@ fun SqlEditor(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme()
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    initialWrapLines: Boolean = true
 ) {
     val editorBg = if (isDarkTheme) Color(0xFF0F172A) else Color(0xFFF8FAFC)
     val gutterBg = if (isDarkTheme) Color(0xFF0B1120) else Color(0xFFEDF2F7)
@@ -58,9 +64,37 @@ fun SqlEditor(
     val defaultTextColor = if (isDarkTheme) Color(0xFFF1F5F9) else Color(0xFF0F172A)
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
 
-    val lineCount = value.text.count { it == '\n' } + 1
+    var isWrapEnabled by rememberSaveable { mutableStateOf(initialWrapLines) }
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
+
+    // Dynamically compute gutter lines to match soft-wrapped visual lines perfectly
+    val gutterLines = remember(value.text, textLayoutResult, isWrapEnabled) {
+        if (!isWrapEnabled || textLayoutResult == null) {
+            val total = value.text.count { it == '\n' } + 1
+            (1..total).map { it.toString() }
+        } else {
+            val result = textLayoutResult!!
+            val rawText = value.text
+            var currentLogicalLine = 1
+            (0 until result.lineCount).map { visualIndex ->
+                if (visualIndex == 0) {
+                    currentLogicalLine.toString()
+                } else {
+                    val startOffset = result.getLineStart(visualIndex)
+                    val isNewLogical = startOffset > 0 && rawText.getOrNull(startOffset - 1) == '\n'
+                    if (isNewLogical) {
+                        currentLogicalLine++
+                        currentLogicalLine.toString()
+                    } else {
+                        "" // Soft-wrapped continuation line (keeps vertical alignment)
+                    }
+                }
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -83,28 +117,39 @@ fun SqlEditor(
                     .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 56.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                for (line in 1..lineCount) {
-                    Text(
-                        text = line.toString(),
-                        style = TextStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 13.sp,
-                            lineHeight = 20.sp,
-                            color = gutterText
+                gutterLines.forEach { lineText ->
+                    Box(
+                        modifier = Modifier.height(20.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            text = lineText,
+                            style = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp,
+                                color = gutterText
+                            )
                         )
-                    )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Editor Area
-            Box(
-                modifier = Modifier
+            // Editor Area - wraps lines when isWrapEnabled is true; scrolls horizontally when false
+            val editorAreaModifier = if (isWrapEnabled) {
+                Modifier
+                    .weight(1f)
+                    .padding(top = 12.dp, start = 4.dp, bottom = 56.dp, end = 24.dp)
+            } else {
+                Modifier
                     .weight(1f)
                     .horizontalScroll(horizontalScrollState)
                     .padding(top = 12.dp, start = 4.dp, bottom = 56.dp, end = 48.dp)
-            ) {
+            }
+
+            Box(modifier = editorAreaModifier) {
                 if (value.text.isEmpty()) {
                     Text(
                         text = "-- Type your SQL query here...",
@@ -123,6 +168,9 @@ fun SqlEditor(
                         val adjusted = handleAutoIndent(value, newVal)
                         onValueChange(adjusted)
                     },
+                    onTextLayout = { layout ->
+                        textLayoutResult = layout
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("sql_editor_input"),
@@ -139,6 +187,39 @@ fun SqlEditor(
                         keyboardType = KeyboardType.Ascii
                     ),
                     visualTransformation = SqlSyntaxVisualTransformation(isDarkTheme)
+                )
+            }
+        }
+
+        // Quick Wrap/Scroll Mode Toggle Pill at Top-Right
+        Surface(
+            onClick = { isWrapEnabled = !isWrapEnabled },
+            color = if (isWrapEnabled) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.90f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.90f)
+            },
+            shape = RoundedCornerShape(6.dp),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 8.dp, end = 8.dp)
+                .testTag("toggle_wrap_button")
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isWrapEnabled) "Wrap: ON" else "Scroll: ↔",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = if (isWrapEnabled) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 )
             }
         }

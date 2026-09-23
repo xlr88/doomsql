@@ -5,8 +5,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -89,14 +104,21 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
     }
 
     var allQuestions by remember { mutableStateOf<List<Question>>(emptyList()) }
+    var isAppReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         allQuestions = appContainer.repository.getQuestions()
+        isAppReady = true
     }
 
     val progressMap by appContainer.repository.progressMapFlow.collectAsState(initial = emptyMap())
     val dailyActivities by appContainer.repository.dailyActivitiesFlow.collectAsState(initial = emptyList())
     val weeklyGoal by appContainer.userPreferences.weeklyGoalFlow.collectAsState(initial = 10)
     val lastOpenedId = remember(progressMap) { appContainer.repository.getLastOpenedQuestionId() }
+
+    if (!isAppReady) {
+        AppOpenSplashScreen()
+        return
+    }
 
     val showBottomBar = currentRoute in BottomNavItems.map { it.route } || currentRoute?.startsWith("questions") == true
 
@@ -309,6 +331,56 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun AppOpenSplashScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0B101D)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = ">_",
+                    style = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF00D2FF)
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "DoomSQL",
+                    style = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.5.sp,
+                        color = Color.White
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Interactive SQL Sandbox",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontSize = 13.sp,
+                    color = Color(0xFF94A3B8)
+                )
+            )
         }
     }
 }
