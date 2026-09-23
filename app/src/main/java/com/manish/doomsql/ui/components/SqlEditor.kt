@@ -2,7 +2,6 @@ package com.manish.doomsql.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,13 +18,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,8 +52,7 @@ fun SqlEditor(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
-    initialWrapLines: Boolean = true
+    isDarkTheme: Boolean = isSystemInDarkTheme()
 ) {
     val editorBg = if (isDarkTheme) Color(0xFF0F172A) else Color(0xFFF8FAFC)
     val gutterBg = if (isDarkTheme) Color(0xFF0B1120) else Color(0xFFEDF2F7)
@@ -64,15 +60,12 @@ fun SqlEditor(
     val defaultTextColor = if (isDarkTheme) Color(0xFFF1F5F9) else Color(0xFF0F172A)
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
 
-    var isWrapEnabled by rememberSaveable { mutableStateOf(initialWrapLines) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-
     val verticalScrollState = rememberScrollState()
-    val horizontalScrollState = rememberScrollState()
 
     // Dynamically compute gutter lines to match soft-wrapped visual lines perfectly
-    val gutterLines = remember(value.text, textLayoutResult, isWrapEnabled) {
-        if (!isWrapEnabled || textLayoutResult == null) {
+    val gutterLines = remember(value.text, textLayoutResult) {
+        if (textLayoutResult == null) {
             val total = value.text.count { it == '\n' } + 1
             (1..total).map { it.toString() }
         } else {
@@ -137,19 +130,12 @@ fun SqlEditor(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Editor Area - wraps lines when isWrapEnabled is true; scrolls horizontally when false
-            val editorAreaModifier = if (isWrapEnabled) {
-                Modifier
+            // Editor Area - always wraps lines at the boundary (no horizontal scrolling)
+            Box(
+                modifier = Modifier
                     .weight(1f)
-                    .padding(top = 12.dp, start = 4.dp, bottom = 56.dp, end = 24.dp)
-            } else {
-                Modifier
-                    .weight(1f)
-                    .horizontalScroll(horizontalScrollState)
-                    .padding(top = 12.dp, start = 4.dp, bottom = 56.dp, end = 48.dp)
-            }
-
-            Box(modifier = editorAreaModifier) {
+                    .padding(top = 12.dp, start = 4.dp, bottom = 56.dp, end = 12.dp)
+            ) {
                 if (value.text.isEmpty()) {
                     Text(
                         text = "-- Type your SQL query here...",
@@ -187,39 +173,6 @@ fun SqlEditor(
                         keyboardType = KeyboardType.Ascii
                     ),
                     visualTransformation = SqlSyntaxVisualTransformation(isDarkTheme)
-                )
-            }
-        }
-
-        // Quick Wrap/Scroll Mode Toggle Pill at Top-Right
-        Surface(
-            onClick = { isWrapEnabled = !isWrapEnabled },
-            color = if (isWrapEnabled) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.90f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.90f)
-            },
-            shape = RoundedCornerShape(6.dp),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 8.dp, end = 8.dp)
-                .testTag("toggle_wrap_button")
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (isWrapEnabled) "Wrap: ON" else "Scroll: ↔",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = if (isWrapEnabled) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
                 )
             }
         }
