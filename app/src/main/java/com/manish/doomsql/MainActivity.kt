@@ -34,6 +34,8 @@ import androidx.navigation.navArgument
 import com.manish.doomsql.data.model.Question
 import com.manish.doomsql.ui.navigation.BottomNavItems
 import com.manish.doomsql.ui.navigation.Screen
+import com.manish.doomsql.ui.screens.auth.SignInScreen
+import com.manish.doomsql.ui.screens.auth.SignInViewModel
 import com.manish.doomsql.ui.screens.detail.QuestionDetailScreen
 import com.manish.doomsql.ui.screens.detail.QuestionDetailViewModel
 import com.manish.doomsql.ui.screens.home.HomeScreen
@@ -264,11 +266,47 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
             // Settings Screen
             composable(Screen.Settings.route) {
                 SettingsScreen(
+                    authRepository = appContainer.authRepository,
+                    onNavigateToSignIn = {
+                        navController.navigate(Screen.SignIn.route)
+                    },
                     onResetAllProgress = {
                         coroutineScope.launch {
                             appContainer.repository.resetAllProgress()
                         }
                     }
+                )
+            }
+
+            // Optional Sign-In Screen
+            composable(Screen.SignIn.route) {
+                val signInViewModel: SignInViewModel = viewModel {
+                    SignInViewModel(authRepository = appContainer.authRepository)
+                }
+                val signInUiState by signInViewModel.uiState.collectAsState()
+
+                SignInScreen(
+                    uiState = signInUiState,
+                    onEmailChanged = signInViewModel::onEmailChanged,
+                    onPasswordChanged = signInViewModel::onPasswordChanged,
+                    onConfirmPasswordChanged = signInViewModel::onConfirmPasswordChanged,
+                    onToggleMode = signInViewModel::toggleMode,
+                    onSignInWithGoogle = { ctx, onSuccess ->
+                        signInViewModel.signInWithGoogle(ctx, onSuccess)
+                    },
+                    onSubmitEmailAuth = { onSuccess ->
+                        signInViewModel.submitEmailAuth(onSuccess)
+                    },
+                    onOpenForgotPasswordDialog = signInViewModel::openForgotPasswordDialog,
+                    onDismissForgotPasswordDialog = signInViewModel::dismissForgotPasswordDialog,
+                    onForgotPasswordEmailChanged = signInViewModel::onForgotPasswordEmailChanged,
+                    onSubmitForgotPassword = signInViewModel::submitForgotPassword,
+                    onDismissVerificationDialog = { onSuccess ->
+                        signInViewModel.dismissVerificationNoticeDialog(onSuccess)
+                    },
+                    onDismissError = signInViewModel::onDismissError,
+                    onDismissSuccess = signInViewModel::onDismissSuccess,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }

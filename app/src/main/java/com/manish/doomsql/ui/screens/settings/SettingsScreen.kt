@@ -45,6 +45,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,6 +64,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.style.TextOverflow
+import com.manish.doomsql.data.repository.AuthRepository
+import com.manish.doomsql.data.repository.AuthResult
 import com.manish.doomsql.BuildConfig
 import com.manish.doomsql.config.AppLinks
 import com.manish.doomsql.ui.theme.ErrorRed
@@ -72,6 +84,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
+    authRepository: AuthRepository,
+    onNavigateToSignIn: () -> Unit,
     onResetAllProgress: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -79,8 +93,12 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val currentUser by authRepository.currentUser.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }
     var showContactDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var alsoResetLocalOnDelete by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -95,6 +113,228 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // ==================== ACCOUNT SECTION ====================
+            if (currentUser == null) {
+                // Signed Out State
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_account_signed_out_card"),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Account",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Optional • Back up your progress",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Sign in to save your solved questions and achievements. The app remains 100% functional offline without an account.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Button(
+                            onClick = onNavigateToSignIn,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("settings_sign_in_button"),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Sign In to Back Up Progress")
+                        }
+                    }
+                }
+            } else {
+                // Signed In State
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_account_signed_in_card"),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = currentUser?.displayName ?: currentUser?.email ?: "Signed In User",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (currentUser?.displayName != null && currentUser?.email != null) {
+                                    Text(
+                                        text = currentUser?.email ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+
+                        // Email verification indicator
+                        if (currentUser?.email != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (currentUser?.isEmailVerified == true) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = SolvedGreen.copy(alpha = 0.15f)
+                                    ) {
+                                        Text(
+                                            text = "✓ Email Verified",
+                                            color = SolvedGreen,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                } else {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                                    ) {
+                                        Text(
+                                            text = "Unverified Email",
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                val res = authRepository.sendEmailVerification()
+                                                when (res) {
+                                                    is AuthResult.Success -> {
+                                                        snackbarHostState.showSnackbar("Verification email sent to ${currentUser?.email}")
+                                                    }
+                                                    is AuthResult.Error -> {
+                                                        snackbarHostState.showSnackbar(res.message)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Text("Resend Link", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        authRepository.signOut()
+                                        snackbarHostState.showSnackbar("Signed out successfully")
+                                    }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("settings_sign_out_button"),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Logout,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sign Out")
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    alsoResetLocalOnDelete = false
+                                    showDeleteAccountDialog = true
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = ErrorRed
+                                ),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    brush = androidx.compose.ui.graphics.SolidColor(ErrorRed.copy(alpha = 0.5f))
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("settings_delete_account_button"),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = ErrorRed,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Delete", color = ErrorRed)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Offline Status Card
             Card(
                 modifier = Modifier
@@ -121,7 +361,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(14.dp))
                     Column {
                         Text(
-                            text = "100% Offline Architecture",
+                            text = "Offline SQL Sandbox",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = SolvedGreen
@@ -129,7 +369,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "No internet permissions, no external APIs, no analytics. All SQL executes in a local sandboxed engine.",
+                            text = "All SQL queries execute in a private local engine on your device. Accounts and cloud features are completely optional.",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -574,6 +814,106 @@ fun SettingsScreen(
                 TextButton(
                     onClick = { showContactDialog = false },
                     modifier = Modifier.testTag("support_dialog_cancel")
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete Account Confirmation Dialog (Google Play Requirement)
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDeletingAccount) showDeleteAccountDialog = false
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = ErrorRed
+                )
+            },
+            title = {
+                Text(
+                    text = "Delete Account?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Are you sure you want to permanently delete your DoomSQL account? This action removes your cloud user credentials and cannot be undone.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { alsoResetLocalOnDelete = !alsoResetLocalOnDelete }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Checkbox(
+                            checked = alsoResetLocalOnDelete,
+                            onCheckedChange = { alsoResetLocalOnDelete = it },
+                            modifier = Modifier.testTag("delete_account_reset_local_checkbox")
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Also reset local progress on this device",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    Text(
+                        text = "In compliance with Google Play policy, you can also delete your account via the web at: ${AppLinks.ACCOUNT_DELETION_URL}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            isDeletingAccount = true
+                            val res = authRepository.deleteAccount(
+                                alsoResetLocalProgress = alsoResetLocalOnDelete,
+                                onResetLocalProgress = onResetAllProgress
+                            )
+                            isDeletingAccount = false
+                            when (res) {
+                                is AuthResult.Success -> {
+                                    showDeleteAccountDialog = false
+                                    snackbarHostState.showSnackbar("Account successfully deleted.")
+                                }
+                                is AuthResult.Error -> {
+                                    snackbarHostState.showSnackbar(res.message)
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isDeletingAccount,
+                    colors = ButtonDefaults.buttonColors(containerColor = ErrorRed),
+                    modifier = Modifier.testTag("confirm_delete_account_button")
+                ) {
+                    if (isDeletingAccount) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.onError,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Delete Forever")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountDialog = false },
+                    enabled = !isDeletingAccount,
+                    modifier = Modifier.testTag("cancel_delete_account_button")
                 ) {
                     Text("Cancel")
                 }

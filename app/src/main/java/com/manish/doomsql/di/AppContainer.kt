@@ -7,6 +7,8 @@ import com.manish.doomsql.data.engine.QuestionSelfCheck
 import com.manish.doomsql.data.engine.SandboxSqlEngine
 import com.manish.doomsql.data.engine.SqlExecutionEngine
 import com.manish.doomsql.data.local.DoomSqlDatabase
+import com.manish.doomsql.data.repository.AuthRepository
+import com.manish.doomsql.data.repository.FirebaseAuthRepository
 import com.manish.doomsql.data.repository.QuestionRepository
 import com.manish.doomsql.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +20,7 @@ interface AppContainer {
     val repository: QuestionRepository
     val sqlEngine: SqlExecutionEngine
     val userPreferences: UserPreferencesRepository
+    val authRepository: AuthRepository
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -42,6 +45,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val userPreferences: UserPreferencesRepository by lazy {
         UserPreferencesRepository(context.applicationContext)
+    }
+
+    override val authRepository: AuthRepository by lazy {
+        FirebaseAuthRepository(context.applicationContext)
     }
 
     init {
