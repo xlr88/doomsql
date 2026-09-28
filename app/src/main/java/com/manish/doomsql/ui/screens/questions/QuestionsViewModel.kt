@@ -6,6 +6,8 @@ import com.manish.doomsql.data.local.entity.QuestionProgressEntity
 import com.manish.doomsql.data.model.Difficulty
 import com.manish.doomsql.data.model.Question
 import com.manish.doomsql.data.repository.QuestionRepository
+import com.manish.doomsql.data.repository.UserPreferencesRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +25,7 @@ data class QuestionsUiState(
     val searchQuery: String = "",
     val difficultyFilter: Difficulty? = null, // null means ALL
     val statusFilter: StatusFilter = StatusFilter.ALL,
+    val newQuestionsBannerCount: Int = 0,
     val isLoading: Boolean = true
 ) {
     val filteredQuestions: List<Question>
@@ -56,29 +59,31 @@ data class QuestionsUiState(
 
 class QuestionsViewModel(
     private val repository: QuestionRepository,
+    private val userPreferences: UserPreferencesRepository? = null,
     initialDifficulty: Difficulty? = null
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     private val _difficultyFilter = MutableStateFlow<Difficulty?>(initialDifficulty)
     private val _statusFilter = MutableStateFlow(StatusFilter.ALL)
-    private val _questions = MutableStateFlow<List<Question>>(emptyList())
-    private val _isLoading = MutableStateFlow(true)
+    private val _bannerFlow: Flow<Int> = userPreferences?.newQuestionsBannerCountFlow ?: MutableStateFlow(0)
 
     val uiState: StateFlow<QuestionsUiState> = combine(
-        _questions,
+        repository.questionsFlow,
         repository.progressMapFlow,
         _searchQuery,
         _difficultyFilter,
-        _statusFilter
-    ) { questions, progressMap, search, diff, status ->
+        combine(_statusFilter, _bannerFlow) { status, banner -> Pair(status, banner) }
+    ) { questions, progressMap, search, diff, statusBannerPair ->
+        val (status, banner) = statusBannerPair
         QuestionsUiState(
             questions = questions,
             progressMap = progressMap,
             searchQuery = search,
             difficultyFilter = diff,
             statusFilter = status,
-            isLoading = false
+            newQuestionsBannerCount = banner,
+            isLoading = questions.isEmpty()
         )
     }.stateIn(
         scope = viewModelScope,
@@ -87,15 +92,8 @@ class QuestionsViewModel(
     )
 
     init {
-        loadQuestions()
-    }
-
-    private fun loadQuestions() {
         viewModelScope.launch {
-            _isLoading.value = true
-            val list = repository.getQuestions()
-            _questions.value = list
-            _isLoading.value = false
+            repository.getQuestions()
         }
     }
 
@@ -109,5 +107,11 @@ class QuestionsViewModel(
 
     fun onStatusFilterSelected(status: StatusFilter) {
         _statusFilter.value = status
+    }
+
+    fun onDismissBanner() {
+        viewModelScope.launch {
+            repository.dismissNewQuestionsBanner()
+        }
     }
 }

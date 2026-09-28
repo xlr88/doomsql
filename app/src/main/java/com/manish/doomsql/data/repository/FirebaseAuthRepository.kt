@@ -6,17 +6,16 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.gms.tasks.Task
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.manish.doomsql.BuildConfig
@@ -25,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.net.UnknownHostException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -67,131 +67,34 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
             "Firebase is not configured yet. Please add google-services.json to the app folder."
         )
 
-        val webClientId = getWebClientId(context)
-            ?: return AuthResult.Error(
-                "Google Sign-In Web Client ID not found. Ensure google-services.json contains an OAuth Web Client ID or define WEB_CLIENT_ID in your .env file."
-            )
-
         return try {
-            val credentialManager = CredentialManager.create(context)
+            val credential = retrieveGoogleAuthCredential(context)
+                ?: return AuthResult.Error("Could not retrieve Google credentials.")
 
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(webClientId)
-                .setAutoSelectEnabled(false)
-                .build()
-
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
-
-            val response = credentialManager.getCredential(
-                request = request,
-                context = context
-            )
-
-            val credential = response.credential
-            if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                val idToken = googleIdTokenCredential.idToken
-                val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-                val authResult = auth.signInWithCredential(firebaseCredential).awaitTask()
-                val user = authResult.user?.toAuthUser()
-                if (user != null) {
-                    _currentUser.value = user
-                    AuthResult.Success(user)
-                } else {
-                    AuthResult.Error("Google Sign-In completed, but user details were unavailable.")
-                }
+            val authResult = auth.signInWithCredential(credential).awaitTask()
+            val user = authResult.user?.toAuthUser()
+            if (user != null) {
+                _currentUser.value = user
+                AuthResult.Success(user)
             } else {
-                AuthResult.Error("Unsupported credential type received.")
+                AuthResult.Error("Google Sign-In completed, but user details were unavailable.")
             }
         } catch (e: GetCredentialCancellationException) {
-            AuthResult.Error("Google Sign-In was cancelled.", e)
+            AuthResult.Error("Google Sign-In was cancelled by user.", e)
+        } catch (e: NoCredentialException) {
+            AuthResult.Error("No Google account found on this device. Please add a Google account in system settings.", e)
+        } catch (e: GetCredentialException) {
+            Log.w("AuthRepository", "Credential Manager exception: ${e.message}", e)
+            val msg = when {
+                e.message?.contains("cancel", ignoreCase = true) == true -> "Google Sign-In was cancelled."
+                e.message?.contains("no account", ignoreCase = true) == true -> "No Google account found on this device."
+                e.message?.contains("network", ignoreCase = true) == true -> "Network error during Google Sign-In. Please check your connection."
+                else -> e.message ?: "Could not authenticate with Google."
+            }
+            AuthResult.Error(msg, e)
         } catch (e: Exception) {
             Log.e("AuthRepository", "Google Sign-In failed", e)
-            AuthResult.Error(mapFirebaseException(e), e)
-        }
-    }
-
-    override suspend fun signInWithEmail(email: String, password: String): AuthResult<AuthUser> {
-        val auth = firebaseAuth ?: return AuthResult.Error(
-            "Firebase is not configured yet. Please add google-services.json to the app folder."
-        )
-
-        if (email.isBlank()) return AuthResult.Error("Please enter your email address.")
-        if (password.isBlank()) return AuthResult.Error("Please enter your password.")
-
-        return try {
-            val result = auth.signInWithEmailAndPassword(email.trim(), password).awaitTask()
-            val user = result.user?.toAuthUser()
-            if (user != null) {
-                _currentUser.value = user
-                AuthResult.Success(user)
-            } else {
-                AuthResult.Error("Sign in failed. Could not retrieve user profile.")
-            }
-        } catch (e: Exception) {
-            Log.e("AuthRepository", "Email sign-in failed", e)
-            AuthResult.Error(mapFirebaseException(e), e)
-        }
-    }
-
-    override suspend fun signUpWithEmail(email: String, password: String): AuthResult<AuthUser> {
-        val auth = firebaseAuth ?: return AuthResult.Error(
-            "Firebase is not configured yet. Please add google-services.json to the app folder."
-        )
-
-        if (email.isBlank()) return AuthResult.Error("Please enter your email address.")
-        if (password.length < 6) return AuthResult.Error("Password must be at least 6 characters long.")
-
-        return try {
-            val result = auth.createUserWithEmailAndPassword(email.trim(), password).awaitTask()
-            val firebaseUser = result.user
-            try {
-                firebaseUser?.sendEmailVerification()?.awaitTask()
-            } catch (verEx: Exception) {
-                Log.w("AuthRepository", "Failed to send initial verification email", verEx)
-            }
-            val user = firebaseUser?.toAuthUser()
-            if (user != null) {
-                _currentUser.value = user
-                AuthResult.Success(user)
-            } else {
-                AuthResult.Error("Account creation failed.")
-            }
-        } catch (e: Exception) {
-            Log.e("AuthRepository", "Email sign-up failed", e)
-            AuthResult.Error(mapFirebaseException(e), e)
-        }
-    }
-
-    override suspend fun sendPasswordResetEmail(email: String): AuthResult<Unit> {
-        val auth = firebaseAuth ?: return AuthResult.Error(
-            "Firebase is not configured yet. Please add google-services.json to the app folder."
-        )
-
-        if (email.isBlank()) return AuthResult.Error("Please enter your email address.")
-
-        return try {
-            auth.sendPasswordResetEmail(email.trim()).awaitTask()
-            AuthResult.Success(Unit)
-        } catch (e: Exception) {
-            Log.e("AuthRepository", "Password reset failed", e)
-            AuthResult.Error(mapFirebaseException(e), e)
-        }
-    }
-
-    override suspend fun sendEmailVerification(): AuthResult<Unit> {
-        val auth = firebaseAuth ?: return AuthResult.Error("Firebase is not initialized.")
-        val user = auth.currentUser ?: return AuthResult.Error("No user is currently signed in.")
-
-        return try {
-            user.sendEmailVerification().awaitTask()
-            AuthResult.Success(Unit)
-        } catch (e: Exception) {
-            Log.e("AuthRepository", "Failed to send verification email", e)
-            AuthResult.Error(mapFirebaseException(e), e)
+            AuthResult.Error(mapAuthException(e), e)
         }
     }
 
@@ -205,6 +108,7 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
     }
 
     override suspend fun deleteAccount(
+        context: Context,
         alsoResetLocalProgress: Boolean,
         onResetLocalProgress: suspend () -> Unit
     ): AuthResult<Unit> {
@@ -212,20 +116,62 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
         val user = auth.currentUser ?: return AuthResult.Error("No user is currently signed in.")
 
         return try {
-            user.delete().awaitTask()
+            try {
+                user.delete().awaitTask()
+            } catch (e: FirebaseAuthRecentLoginRequiredException) {
+                Log.i("AuthRepository", "Recent login required to delete account. Re-authenticating with Google...")
+                val reauthCredential = retrieveGoogleAuthCredential(context)
+                    ?: return AuthResult.Error("For security, please sign in with Google again to confirm account deletion.")
+
+                user.reauthenticate(reauthCredential).awaitTask()
+                user.delete().awaitTask()
+            }
+
             _currentUser.value = null
             if (alsoResetLocalProgress) {
                 onResetLocalProgress()
             }
             AuthResult.Success(Unit)
+        } catch (e: GetCredentialCancellationException) {
+            AuthResult.Error("Re-authentication was cancelled. Account was not deleted.", e)
         } catch (e: Exception) {
             Log.e("AuthRepository", "Account deletion failed", e)
-            AuthResult.Error(mapFirebaseException(e), e)
+            AuthResult.Error(mapAuthException(e), e)
         }
     }
 
+    /**
+     * Obtains a Google AuthCredential from Android Credential Manager using GoogleIdTokenCredential.
+     */
+    private suspend fun retrieveGoogleAuthCredential(context: Context): AuthCredential? {
+        val webClientId = getWebClientId(context) ?: return null
+
+        val credentialManager = CredentialManager.create(context)
+        val googleIdOption = GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false)
+            .setServerClientId(webClientId)
+            .setAutoSelectEnabled(false)
+            .build()
+
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        val response = credentialManager.getCredential(
+            request = request,
+            context = context
+        )
+
+        val credential = response.credential
+        if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+            return GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
+        }
+        return null
+    }
+
     private fun getWebClientId(context: Context): String? {
-        // 1. Try BuildConfig.WEB_CLIENT_ID if injected via Secrets plugin
+        // 1. Try BuildConfig.WEB_CLIENT_ID if injected via Secrets plugin / .env
         try {
             val field = BuildConfig::class.java.getField("WEB_CLIENT_ID")
             val value = field.get(null) as? String
@@ -244,14 +190,12 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
         return null
     }
 
-    private fun mapFirebaseException(e: Throwable): String {
+    private fun mapAuthException(e: Throwable): String {
         return when (e) {
-            is FirebaseAuthInvalidUserException -> "No account found with this email."
-            is FirebaseAuthInvalidCredentialsException -> "Incorrect password or invalid email format."
-            is FirebaseAuthUserCollisionException -> "An account with this email already exists."
-            is FirebaseAuthWeakPasswordException -> "Password is too weak. Please use at least 6 characters."
-            is FirebaseNetworkException -> "Network error. Please check your internet connection."
-            is FirebaseAuthRecentLoginRequiredException -> "For security, please sign in again before deleting your account."
+            is FirebaseNetworkException, is UnknownHostException ->
+                "Network error. Please check your internet connection."
+            is FirebaseAuthRecentLoginRequiredException ->
+                "For security, please sign in again before deleting your account."
             else -> e.localizedMessage ?: "An unexpected authentication error occurred."
         }
     }

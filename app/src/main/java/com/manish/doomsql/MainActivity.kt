@@ -49,8 +49,8 @@ import androidx.navigation.navArgument
 import com.manish.doomsql.data.model.Question
 import com.manish.doomsql.ui.navigation.BottomNavItems
 import com.manish.doomsql.ui.navigation.Screen
-import com.manish.doomsql.ui.screens.auth.SignInScreen
-import com.manish.doomsql.ui.screens.auth.SignInViewModel
+import com.manish.doomsql.ui.screens.welcome.WelcomeScreen
+import com.manish.doomsql.ui.screens.welcome.WelcomeViewModel
 import com.manish.doomsql.ui.screens.detail.QuestionDetailScreen
 import com.manish.doomsql.ui.screens.detail.QuestionDetailViewModel
 import com.manish.doomsql.ui.screens.home.HomeScreen
@@ -103,19 +103,24 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
         }
     }
 
-    var allQuestions by remember { mutableStateOf<List<Question>>(emptyList()) }
+    val allQuestions by appContainer.repository.questionsFlow.collectAsState()
     var isAppReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        allQuestions = appContainer.repository.getQuestions()
+        appContainer.repository.getQuestions()
         isAppReady = true
+        // Quietly check for new questions in background if 24h passed
+        launch {
+            appContainer.repository.syncQuestions(isManual = false)
+        }
     }
 
     val progressMap by appContainer.repository.progressMapFlow.collectAsState(initial = emptyMap())
     val dailyActivities by appContainer.repository.dailyActivitiesFlow.collectAsState(initial = emptyList())
     val weeklyGoal by appContainer.userPreferences.weeklyGoalFlow.collectAsState(initial = 10)
+    val hasCompletedWelcome by appContainer.userPreferences.hasCompletedWelcomeFlow.collectAsState(initial = null)
     val lastOpenedId = remember(progressMap) { appContainer.repository.getLastOpenedQuestionId() }
 
-    if (!isAppReady) {
+    if (!isAppReady || hasCompletedWelcome == null) {
         AppOpenSplashScreen()
         return
     }
@@ -162,7 +167,7 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = if (hasCompletedWelcome == true) Screen.Home.route else Screen.Welcome.route,
             modifier = Modifier.padding(innerPadding)
         ) {
             // Home Screen
@@ -215,6 +220,7 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
                 val questionsViewModel = viewModel(key = "questions_$diffStr") {
                     QuestionsViewModel(
                         repository = appContainer.repository,
+                        userPreferences = appContainer.userPreferences,
                         initialDifficulty = initialDifficulty
                     )
                 }
@@ -225,6 +231,7 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
                     onSearchQueryChanged = questionsViewModel::onSearchQueryChanged,
                     onDifficultyFilterSelected = questionsViewModel::onDifficultyFilterSelected,
                     onStatusFilterSelected = questionsViewModel::onStatusFilterSelected,
+                    onDismissBanner = questionsViewModel::onDismissBanner,
                     onNavigateToQuestion = { id ->
                         navController.navigate(Screen.QuestionDetail.createRoute(id))
                     }
@@ -289,9 +296,8 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     authRepository = appContainer.authRepository,
-                    onNavigateToSignIn = {
-                        navController.navigate(Screen.SignIn.route)
-                    },
+                    questionRepository = appContainer.repository,
+                    userPreferences = appContainer.userPreferences,
                     onResetAllProgress = {
                         coroutineScope.launch {
                             appContainer.repository.resetAllProgress()
@@ -300,35 +306,40 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
                 )
             }
 
-            // Optional Sign-In Screen
-            composable(Screen.SignIn.route) {
-                val signInViewModel: SignInViewModel = viewModel {
-                    SignInViewModel(authRepository = appContainer.authRepository)
+            // Welcome Screen (shown on first launch with Google / Offline choices)
+            composable(Screen.Welcome.route) {
+                val welcomeViewModel: WelcomeViewModel = viewModel {
+                    WelcomeViewModel(
+                        authRepository = appContainer.authRepository,
+                        userPreferences = appContainer.userPreferences
+                    )
                 }
-                val signInUiState by signInViewModel.uiState.collectAsState()
+                val welcomeUiState by welcomeViewModel.uiState.collectAsState()
 
-                SignInScreen(
-                    uiState = signInUiState,
-                    onEmailChanged = signInViewModel::onEmailChanged,
-                    onPasswordChanged = signInViewModel::onPasswordChanged,
-                    onConfirmPasswordChanged = signInViewModel::onConfirmPasswordChanged,
-                    onToggleMode = signInViewModel::toggleMode,
-                    onSignInWithGoogle = { ctx, onSuccess ->
-                        signInViewModel.signInWithGoogle(ctx, onSuccess)
+                WelcomeScreen(
+                    uiState = welcomeUiState,
+                    onContinueWithGoogle = { ctx ->
+                        welcomeViewModel.continueWithGoogle(ctx) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Welcome.route) { inclusive = true }
+                            }
+                        }
                     },
-                    onSubmitEmailAuth = { onSuccess ->
-                        signInViewModel.submitEmailAuth(onSuccess)
+                    onPracticeOffline = {
+                        welcomeViewModel.practiceOffline {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Welcome.route) { inclusive = true }
+                            }
+                        }
                     },
-                    onOpenForgotPasswordDialog = signInViewModel::openForgotPasswordDialog,
-                    onDismissForgotPasswordDialog = signInViewModel::dismissForgotPasswordDialog,
-                    onForgotPasswordEmailChanged = signInViewModel::onForgotPasswordEmailChanged,
-                    onSubmitForgotPassword = signInViewModel::submitForgotPassword,
-                    onDismissVerificationDialog = { onSuccess ->
-                        signInViewModel.dismissVerificationNoticeDialog(onSuccess)
+                    onSkip = {
+                        welcomeViewModel.skip {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Welcome.route) { inclusive = true }
+                            }
+                        }
                     },
-                    onDismissError = signInViewModel::onDismissError,
-                    onDismissSuccess = signInViewModel::onDismissSuccess,
-                    onNavigateBack = { navController.popBackStack() }
+                    onDismissError = welcomeViewModel::onDismissError
                 )
             }
         }

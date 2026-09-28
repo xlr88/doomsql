@@ -300,6 +300,7 @@ def main():
     parser.add_argument("--count", "-c", type=int, default=1, help="Number of questions to generate (default: 1)")
     parser.add_argument("--difficulty", "-d", choices=["EASY", "MEDIUM", "HARD", "ANY"], default="ANY", help="Filter by difficulty")
     parser.add_argument("--add-to-app", action="store_true", help="Automatically save to app/src/main/assets/questions/ and register in index.json")
+    parser.add_argument("--add-to-remote", action="store_true", help="Automatically save to remote content repo questions/ and rebuild manifest.json")
     parser.add_argument("--preview", action="store_true", help="Print question JSON to stdout without saving")
 
     args = parser.parse_args()
@@ -331,8 +332,12 @@ def main():
             print(json.dumps(q, indent=2))
 
         if args.add_to_app:
-            save_question(q)
+            save_question(q, is_remote=False)
             print("    [✓] Successfully added to DoomSQL assets and registered in index.json!")
+
+        if args.add_to_remote:
+            save_question(q, is_remote=True)
+            print("    [✓] Successfully added to remote questions and rebuilt manifest.json!")
 
     print("\nDone! 🎉")
 

@@ -1,0 +1,29 @@
+name: Verify questions
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify every question and check the manifest is current
+        run: |
+          if [ -f questions/manifest.json ]; then
+            cp questions/manifest.json /tmp/committed.json
+            python tools/build_manifest.py
+            python - <<'PY'
+          import json, sys
+          a = json.load(open('/tmp/committed.json'))
+          b = json.load(open('questions/manifest.json'))
+          a.pop('generatedAt', None); b.pop('generatedAt', None)
+          a.pop('manifestVersion', None); b.pop('manifestVersion', None)
+          if a != b:
+              sys.exit("manifest.json is stale — run tools/build_manifest.py and commit it")
+          print("manifest.json is up to date")
+          PY
+          else
+            python tools/build_manifest.py
+          fi

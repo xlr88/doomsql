@@ -104,7 +104,7 @@ dependencies {
   implementation(libs.androidx.sqlite)
   implementation(libs.androidx.sqlite.bundled)
   implementation(libs.kotlinx.serialization.json)
-  // implementation(libs.coil.compose)
+  implementation(libs.coil.compose)
   // implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

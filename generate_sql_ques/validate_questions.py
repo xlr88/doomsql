@@ -126,28 +126,46 @@ def validate_question_file(file_path: str) -> bool:
 
 
 def main():
-    if not os.path.exists(INDEX_PATH):
-        print(f"[!] Error: {INDEX_PATH} not found.", file=sys.stderr)
-        sys.exit(1)
+    import argparse
+    import glob
 
-    with open(INDEX_PATH, "r", encoding="utf-8") as f:
-        index_list = json.load(f)
+    parser = argparse.ArgumentParser(description="DoomSQL Question Validator")
+    parser.add_argument("--remote", "-r", action="store_true", help="Validate remote content repository questions/ folder")
+    parser.add_argument("--dir", "-d", help="Custom directory containing questions to validate")
+    args = parser.parse_args()
 
-    print(f"=== Validating {len(index_list)} DoomSQL Questions ===")
+    if args.dir:
+        target_dir = os.path.abspath(args.dir)
+        files_to_validate = sorted(glob.glob(os.path.join(target_dir, "sql_*.json")))
+    elif args.remote:
+        target_dir = os.path.join(PROJECT_ROOT, "questions")
+        files_to_validate = sorted(glob.glob(os.path.join(target_dir, "sql_*.json")))
+    else:
+        target_dir = QUESTIONS_DIR
+        if not os.path.exists(INDEX_PATH):
+            print(f"[!] Error: {INDEX_PATH} not found.", file=sys.stderr)
+            sys.exit(1)
+        with open(INDEX_PATH, "r", encoding="utf-8") as f:
+            index_list = json.load(f)
+        files_to_validate = [os.path.join(QUESTIONS_DIR, item) for item in index_list]
+
+    print(f"=== Validating {len(files_to_validate)} DoomSQL Questions ({target_dir}) ===")
     all_passed = True
-    for item in index_list:
-        file_path = os.path.join(QUESTIONS_DIR, item)
+    for file_path in files_to_validate:
         if not os.path.exists(file_path):
-            print(f"[FAIL] Missing file listed in index.json: {item}")
+            print(f"[FAIL] Missing file: {file_path}")
             all_passed = False
             continue
         if not validate_question_file(file_path):
             all_passed = False
 
     print("=" * 55)
-    if all_passed:
-        print(f"All {len(index_list)} questions PASSED validation perfectly! 🎉")
+    if all_passed and files_to_validate:
+        print(f"All {len(files_to_validate)} questions PASSED validation perfectly! 🎉")
         sys.exit(0)
+    elif not files_to_validate:
+        print("No questions found to validate.", file=sys.stderr)
+        sys.exit(1)
     else:
         print("Some questions failed validation. Please fix errors before shipping.", file=sys.stderr)
         sys.exit(1)

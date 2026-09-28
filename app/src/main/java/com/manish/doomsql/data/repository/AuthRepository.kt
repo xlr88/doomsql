@@ -9,6 +9,10 @@ sealed class AuthResult<out T> {
     data class Error(val message: String, val cause: Throwable? = null) : AuthResult<Nothing>()
 }
 
+/**
+ * Domain repository abstraction for authentication in DoomSQL.
+ * Ensures the rest of the app never touches Firebase directly.
+ */
 interface AuthRepository {
     /**
      * Flow emitting the currently authenticated user, or null if signed out.
@@ -21,29 +25,9 @@ interface AuthRepository {
     val isConfigured: Boolean
 
     /**
-     * Authenticate via Google Sign-In using Android Credential Manager (androidx.credentials).
+     * Authenticate via Google Sign-In using Android Credential Manager (androidx.credentials + GoogleIdOption).
      */
     suspend fun signInWithGoogle(context: Context): AuthResult<AuthUser>
-
-    /**
-     * Authenticate via Email + Password.
-     */
-    suspend fun signInWithEmail(email: String, password: String): AuthResult<AuthUser>
-
-    /**
-     * Create a new account with Email + Password and automatically send verification email.
-     */
-    suspend fun signUpWithEmail(email: String, password: String): AuthResult<AuthUser>
-
-    /**
-     * Send password reset email to the specified address.
-     */
-    suspend fun sendPasswordResetEmail(email: String): AuthResult<Unit>
-
-    /**
-     * Resend verification email to current user.
-     */
-    suspend fun sendEmailVerification(): AuthResult<Unit>
 
     /**
      * Sign out current user.
@@ -51,10 +35,11 @@ interface AuthRepository {
     suspend fun signOut()
 
     /**
-     * Delete user account from Firebase.
+     * Delete user account from Firebase (re-authenticating with Google if Firebase requires recent login).
      * Optionally resets local SQLite progress if [alsoResetLocalProgress] is true.
      */
     suspend fun deleteAccount(
+        context: Context,
         alsoResetLocalProgress: Boolean,
         onResetLocalProgress: suspend () -> Unit
     ): AuthResult<Unit>

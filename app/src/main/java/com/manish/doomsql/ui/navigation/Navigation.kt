@@ -20,7 +20,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
         fun createRoute(questionId: String) = "question_detail/$questionId"
     }
 
-    data object SignIn : Screen("sign_in", "Sign In")
+    data object Welcome : Screen("welcome", "Welcome")
 }
 
 val BottomNavItems = listOf(

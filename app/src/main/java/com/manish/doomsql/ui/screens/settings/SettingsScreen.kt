@@ -69,12 +69,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import com.manish.doomsql.data.repository.AuthRepository
 import com.manish.doomsql.data.repository.AuthResult
+import com.manish.doomsql.data.repository.QuestionRepository
+import com.manish.doomsql.data.repository.UserPreferencesRepository
+import com.manish.doomsql.data.remote.SyncResult
 import com.manish.doomsql.BuildConfig
 import com.manish.doomsql.config.AppLinks
 import com.manish.doomsql.ui.theme.ErrorRed
@@ -85,15 +92,22 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     authRepository: AuthRepository,
-    onNavigateToSignIn: () -> Unit,
     onResetAllProgress: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    questionRepository: QuestionRepository? = null,
+    userPreferences: UserPreferencesRepository? = null,
+    onNavigateToSignIn: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val currentUser by authRepository.currentUser.collectAsState()
+    var isGoogleSigningIn by remember { mutableStateOf(false) }
+    var isCheckingSync by remember { mutableStateOf(false) }
+    var syncStatusText by remember { mutableStateOf<String?>(null) }
+    val lastSyncAt by (userPreferences?.lastSyncAtFlow ?: kotlinx.coroutines.flow.flowOf(0L)).collectAsState(initial = 0L)
+    val manifestVersion by (userPreferences?.manifestVersionFlow ?: kotlinx.coroutines.flow.flowOf(1)).collectAsState(initial = 1)
     var showResetDialog by remember { mutableStateOf(false) }
     var showContactDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -141,37 +155,61 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Account",
+                                    text = "Account & Cloud Sync",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
-                                    text = "Optional • Back up your progress",
+                                    text = "Sync your progress across all your devices.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        Text(
-                            text = "Sign in to save your solved questions and achievements. The app remains 100% functional offline without an account.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
                         Button(
-                            onClick = onNavigateToSignIn,
+                            onClick = {
+                                if (!isGoogleSigningIn) {
+                                    coroutineScope.launch {
+                                        isGoogleSigningIn = true
+                                        val res = authRepository.signInWithGoogle(context)
+                                        isGoogleSigningIn = false
+                                        when (res) {
+                                            is AuthResult.Success -> {
+                                                val name = res.data.displayName ?: res.data.email ?: "Google account"
+                                                snackbarHostState.showSnackbar("Signed in as $name")
+                                            }
+                                            is AuthResult.Error -> {
+                                                if (!res.message.contains("cancelled", ignoreCase = true)) {
+                                                    snackbarHostState.showSnackbar(res.message)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !isGoogleSigningIn,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("settings_sign_in_button"),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sign In to Back Up Progress")
+                            if (isGoogleSigningIn) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Connecting...")
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Continue with Google")
+                            }
                         }
                     }
                 }
@@ -193,29 +231,41 @@ fun SettingsScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(44.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(26.dp)
-                                    )
+                            val photoUrl = currentUser?.photoUrl
+                            if (!photoUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = photoUrl,
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = currentUser?.displayName ?: currentUser?.email ?: "Signed In User",
+                                    text = currentUser?.displayName ?: "Google User",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                if (currentUser?.displayName != null && currentUser?.email != null) {
+                                if (!currentUser?.email.isNullOrBlank()) {
                                     Text(
                                         text = currentUser?.email ?: "",
                                         style = MaterialTheme.typography.bodySmall,
@@ -223,57 +273,6 @@ fun SettingsScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                }
-                            }
-                        }
-
-                        // Email verification indicator
-                        if (currentUser?.email != null) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                if (currentUser?.isEmailVerified == true) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = SolvedGreen.copy(alpha = 0.15f)
-                                    ) {
-                                        Text(
-                                            text = "✓ Email Verified",
-                                            color = SolvedGreen,
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                } else {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
-                                    ) {
-                                        Text(
-                                            text = "Unverified Email",
-                                            color = MaterialTheme.colorScheme.onErrorContainer,
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                    TextButton(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                val res = authRepository.sendEmailVerification()
-                                                when (res) {
-                                                    is AuthResult.Success -> {
-                                                        snackbarHostState.showSnackbar("Verification email sent to ${currentUser?.email}")
-                                                    }
-                                                    is AuthResult.Error -> {
-                                                        snackbarHostState.showSnackbar(res.message)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    ) {
-                                        Text("Resend Link", style = MaterialTheme.typography.labelSmall)
-                                    }
                                 }
                             }
                         }
@@ -328,7 +327,7 @@ fun SettingsScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Delete", color = ErrorRed)
+                                Text("Delete Account", color = ErrorRed)
                             }
                         }
                     }
@@ -672,6 +671,71 @@ fun SettingsScreen(
                         trailingText = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         isClickable = false
                     )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 7. Check for new questions
+                    SupportNavigationRow(
+                        label = "Check for new questions",
+                        icon = Icons.Default.Sync,
+                        contentDescription = "Check for new questions online",
+                        testTag = "settings_row_check_questions",
+                        trailingText = if (isCheckingSync) "Checking…" else syncStatusText,
+                        isClickable = !isCheckingSync,
+                        onClick = {
+                            if (!isCheckingSync && questionRepository != null) {
+                                coroutineScope.launch {
+                                    isCheckingSync = true
+                                    syncStatusText = "Checking…"
+                                    val res = questionRepository.syncQuestions(isManual = true)
+                                    isCheckingSync = false
+                                    syncStatusText = when (res) {
+                                        is SyncResult.Success -> {
+                                            if (res.newCount > 0) "Added ${res.newCount} new questions"
+                                            else "Updated ${res.updatedCount} questions"
+                                        }
+                                        is SyncResult.UpToDate -> "You're up to date"
+                                        is SyncResult.NoInternet -> "Couldn't check — no internet"
+                                        is SyncResult.Error -> "Couldn't check — no internet"
+                                        is SyncResult.Skipped -> "You're up to date"
+                                    }
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 8. Question pack version
+                    SupportNavigationRow(
+                        label = "Question pack version",
+                        icon = Icons.Default.Description,
+                        contentDescription = "Question pack version $manifestVersion",
+                        testTag = "settings_row_pack_version",
+                        trailingText = "v$manifestVersion",
+                        isClickable = false
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 9. Last checked
+                    SupportNavigationRow(
+                        label = "Last checked",
+                        icon = Icons.Default.HelpOutline,
+                        contentDescription = "Last checked ${formatTimeAgo(lastSyncAt)}",
+                        testTag = "settings_row_last_checked",
+                        trailingText = formatTimeAgo(lastSyncAt),
+                        isClickable = false
+                    )
                 }
             }
 
@@ -861,7 +925,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Also reset local progress on this device",
+                            text = "Also erase progress on this device",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -879,6 +943,7 @@ fun SettingsScreen(
                         coroutineScope.launch {
                             isDeletingAccount = true
                             val res = authRepository.deleteAccount(
+                                context = context,
                                 alsoResetLocalProgress = alsoResetLocalOnDelete,
                                 onResetLocalProgress = onResetAllProgress
                             )
@@ -1001,5 +1066,22 @@ private fun EngineDetailRow(label: String, value: String) {
                 color = MaterialTheme.colorScheme.onSurface
             )
         )
+    }
+}
+
+private fun formatTimeAgo(timestamp: Long): String {
+    if (timestamp <= 0L) return "Never"
+    val diff = System.currentTimeMillis() - timestamp
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> "$minutes min ago"
+        hours < 24 -> "$hours hr${if (hours > 1) "s" else ""} ago"
+        days == 1L -> "Yesterday"
+        else -> "$days days ago"
     }
 }

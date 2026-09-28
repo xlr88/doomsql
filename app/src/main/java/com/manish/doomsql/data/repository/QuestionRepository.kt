@@ -2,36 +2,51 @@ package com.manish.doomsql.data.repository
 
 import android.content.Context
 import androidx.room.withTransaction
+import com.manish.doomsql.data.engine.SandboxSqlEngine
+import com.manish.doomsql.data.engine.SqlExecutionEngine
 import com.manish.doomsql.data.local.DoomSqlDatabase
 import com.manish.doomsql.data.local.entity.DailyActivityEntity
 import com.manish.doomsql.data.local.entity.QueryDraftEntity
+import com.manish.doomsql.data.local.entity.QuestionIndexEntity
 import com.manish.doomsql.data.local.entity.QuestionProgressEntity
 import com.manish.doomsql.data.model.Question
+import com.manish.doomsql.data.remote.QuestionSyncManager
+import com.manish.doomsql.data.remote.SyncResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class QuestionRepository(
     private val context: Context,
-    private val database: DoomSqlDatabase
+    private val database: DoomSqlDatabase,
+    private val questionSource: QuestionSource = QuestionSource(context),
+    private val userPreferences: UserPreferencesRepository = UserPreferencesRepository(context),
+    private val sqlEngine: SqlExecutionEngine = SandboxSqlEngine()
 ) {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
-
     private val prefs = context.getSharedPreferences("doomsql_prefs", Context.MODE_PRIVATE)
-
-    private var cachedQuestions: List<Question>? = null
 
     private val progressDao = database.questionProgressDao()
     private val draftDao = database.queryDraftDao()
     private val activityDao = database.dailyActivityDao()
+    private val indexDao = database.questionIndexDao()
+
+    private val syncManager = QuestionSyncManager(
+        context = context,
+        questionSource = questionSource,
+        questionIndexDao = indexDao,
+        userPreferences = userPreferences,
+        sqlEngine = sqlEngine
+    )
+
+    private val _questionsFlow = MutableStateFlow<List<Question>>(emptyList())
+    val questionsFlow: StateFlow<List<Question>> = _questionsFlow.asStateFlow()
 
     val progressMapFlow: Flow<Map<String, QuestionProgressEntity>> =
         progressDao.getAllProgress().map { list ->
@@ -41,26 +56,62 @@ class QuestionRepository(
     val dailyActivitiesFlow: Flow<List<DailyActivityEntity>> =
         activityDao.getAllActivities()
 
+    /**
+     * Retrieves questions resolving Layer 1 (internal storage) first, then Layer 2 (bundled assets).
+     * Populates Room index and local in-memory StateFlow.
+     */
     suspend fun getQuestions(): List<Question> = withContext(Dispatchers.IO) {
-        cachedQuestions?.let { return@withContext it }
-        val loaded = loadQuestionsFromAssets()
-        cachedQuestions = loaded
+        if (_questionsFlow.value.isNotEmpty()) {
+            return@withContext _questionsFlow.value
+        }
+
+        val loaded = questionSource.loadAllQuestions()
+        _questionsFlow.value = loaded
+
+        // Populate / update Room searchable index in background
+        try {
+            val entities = loaded.map { q ->
+                QuestionIndexEntity(
+                    id = q.id,
+                    title = q.title,
+                    description = q.description,
+                    difficulty = q.difficulty.name,
+                    tags = q.tags.joinToString(","),
+                    contentVersion = q.contentVersion,
+                    addedAt = q.addedAt,
+                    sourceLayer = if (questionSource.hasInternalFile(q.id)) "INTERNAL_STORAGE" else "ASSETS",
+                    file = "${q.id}.json"
+                )
+            }
+            indexDao.upsertAllIndex(entities)
+        } catch (_: Exception) {}
+
         loaded
     }
 
+    /**
+     * Resolves a single Question by ID (Layer 1 -> Layer 2).
+     */
     suspend fun getQuestion(id: String): Question? = withContext(Dispatchers.IO) {
-        getQuestions().find { it.id == id }
+        _questionsFlow.value.find { it.id == id } ?: questionSource.loadQuestion(id)
     }
 
-    private fun loadQuestionsFromAssets(): List<Question> {
-        val assetManager = context.assets
-        val indexJson = assetManager.open("questions/index.json").bufferedReader().use { it.readText() }
-        val fileNames: List<String> = json.decodeFromString(indexJson)
-
-        return fileNames.map { fileName ->
-            val content = assetManager.open("questions/$fileName").bufferedReader().use { it.readText() }
-            json.decodeFromString<Question>(content)
+    /**
+     * Performs remote synchronization from GitHub + jsDelivr CDN.
+     * Guaranteed never to touch progress tables.
+     */
+    suspend fun syncQuestions(isManual: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
+        val result = syncManager.sync(isManual)
+        if (result is SyncResult.Success) {
+            // Reload all questions and emit through StateFlow
+            val reloaded = questionSource.loadAllQuestions()
+            _questionsFlow.value = reloaded
         }
+        result
+    }
+
+    suspend fun dismissNewQuestionsBanner() {
+        userPreferences.setNewQuestionsBannerCount(0)
     }
 
     suspend fun getDraft(questionId: String): String? = withContext(Dispatchers.IO) {

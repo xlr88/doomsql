@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.manish.doomsql.data.model.Difficulty
 import com.manish.doomsql.data.model.Question
+import com.manish.doomsql.data.model.isNew
 import com.manish.doomsql.ui.screens.home.DifficultyBadge
 import com.manish.doomsql.ui.theme.SolvedGreen
 
@@ -56,13 +57,52 @@ fun QuestionsListScreen(
     onDifficultyFilterSelected: (Difficulty?) -> Unit,
     onStatusFilterSelected: (StatusFilter) -> Unit,
     onNavigateToQuestion: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismissBanner: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(top = 12.dp, start = 16.dp, end = 16.dp)
     ) {
+        // Dismissible new questions banner
+        if (uiState.newQuestionsBannerCount > 0) {
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Color(0xFF00D2FF).copy(alpha = 0.15f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00D2FF).copy(alpha = 0.4f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .testTag("new_questions_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "✨ ${uiState.newQuestionsBannerCount} new questions added",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFF00D2FF),
+                            fontWeight = FontWeight.Medium
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = onDismissBanner,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Dismiss",
+                            tint = Color(0xFF00D2FF),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         // Search bar
         OutlinedTextField(
             value = uiState.searchQuery,
@@ -300,15 +340,37 @@ fun QuestionItemCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = question.title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = question.title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (question.isNew()) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFF00D2FF).copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00D2FF).copy(alpha = 0.6f))
+                        ) {
+                            Text(
+                                text = "NEW",
+                                color = Color(0xFF00D2FF),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = question.description,

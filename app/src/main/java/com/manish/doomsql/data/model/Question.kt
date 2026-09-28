@@ -61,8 +61,22 @@ data class Question(
     val tables: List<TableSchema>,
     val expectedOutput: ExpectedOutput,
     val solutionQuery: String,
-    val explanation: String = ""
+    val explanation: String = "",
+    val addedAt: String? = null,
+    val minAppVersionCode: Int = 1
 )
+
+fun Question.isNew(): Boolean {
+    if (addedAt.isNullOrBlank()) return false
+    return try {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val date = sdf.parse(addedAt) ?: return false
+        val diffMillis = System.currentTimeMillis() - date.time
+        diffMillis in 0..(7L * 24 * 60 * 60 * 1000L)
+    } catch (_: Exception) {
+        false
+    }
+}
 
 fun JsonElement.toSqlValue(): SqlValue {
     if (this is JsonNull) return SqlValue.Null
