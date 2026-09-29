@@ -41,7 +41,7 @@ class QuestionSyncManager(
     companion object {
         private const val TAG = "DoomSQL_Sync"
         private const val TIMEOUT_MS = 15_000
-        private const val SYNC_INTERVAL_MS = 24L * 60L * 60L * 1000L // 24 hours
+        private const val SYNC_INTERVAL_MS = 5L * 60L * 1000L // 5 minutes interval for background check
     }
 
     private val json = Json {
