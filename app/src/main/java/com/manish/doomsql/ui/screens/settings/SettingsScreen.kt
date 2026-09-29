@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +39,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -74,7 +76,9 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import com.manish.doomsql.data.repository.AuthRepository
@@ -113,6 +117,8 @@ fun SettingsScreen(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var alsoResetLocalOnDelete by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
+    var showRateDialog by remember { mutableStateOf(false) }
+    var selectedRating by remember { mutableStateOf(5) }
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -334,6 +340,209 @@ fun SettingsScreen(
                 }
             }
 
+            // ==================== ABOUT & SUPPORT SECTION ====================
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        RoundedCornerShape(16.dp)
+                    )
+                    .testTag("settings_about_support_card"),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.HelpOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "About & Support",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 1. Share DoomSQL
+                    SupportNavigationRow(
+                        label = "Share DoomSQL",
+                        icon = Icons.Default.Share,
+                        contentDescription = "Share DoomSQL with friends",
+                        testTag = "settings_row_share",
+                        onClick = {
+                            SupportHelper.shareApp(context) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Unable to share link")
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 2. Rate DoomSQL
+                    SupportNavigationRow(
+                        label = "Rate DoomSQL",
+                        icon = Icons.Default.Star,
+                        contentDescription = "Rate DoomSQL on Google Play",
+                        testTag = "settings_row_rate",
+                        onClick = {
+                            showRateDialog = true
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 3. Report a bug / Contact support
+                    SupportNavigationRow(
+                        label = "Report a bug / Contact support",
+                        icon = Icons.Default.BugReport,
+                        contentDescription = "Report a bug or contact support team",
+                        testTag = "settings_row_support",
+                        onClick = {
+                            showContactDialog = true
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 4. Privacy Policy
+                    SupportNavigationRow(
+                        label = "Privacy Policy",
+                        icon = Icons.Default.Policy,
+                        contentDescription = "Read Privacy Policy",
+                        testTag = "settings_row_privacy",
+                        onClick = {
+                            SupportHelper.openCustomTabOrBrowser(context, AppLinks.PRIVACY_POLICY_URL) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Unable to open browser")
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 5. Terms of Service
+                    SupportNavigationRow(
+                        label = "Terms of Service",
+                        icon = Icons.Default.Description,
+                        contentDescription = "Read Terms of Service",
+                        testTag = "settings_row_terms",
+                        onClick = {
+                            SupportHelper.openCustomTabOrBrowser(context, AppLinks.TERMS_URL) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Unable to open browser")
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 6. App version (non-clickable, shows versionName)
+                    SupportNavigationRow(
+                        label = "App version",
+                        icon = Icons.Default.Info,
+                        contentDescription = "App version ${BuildConfig.VERSION_NAME}",
+                        testTag = "settings_row_version",
+                        trailingText = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                        isClickable = false
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 7. Check for new questions
+                    SupportNavigationRow(
+                        label = "Check for new questions",
+                        icon = Icons.Default.Sync,
+                        contentDescription = "Check for new questions online",
+                        testTag = "settings_row_check_questions",
+                        trailingText = if (isCheckingSync) "Checking…" else syncStatusText,
+                        isClickable = !isCheckingSync,
+                        onClick = {
+                            if (!isCheckingSync && questionRepository != null) {
+                                coroutineScope.launch {
+                                    isCheckingSync = true
+                                    syncStatusText = "Checking…"
+                                    val res = questionRepository.syncQuestions(isManual = true)
+                                    isCheckingSync = false
+                                    syncStatusText = when (res) {
+                                        is SyncResult.Success -> {
+                                            if (res.newCount > 0) "Added ${res.newCount} new questions"
+                                            else "Updated ${res.updatedCount} questions"
+                                        }
+                                        is SyncResult.UpToDate -> "You're up to date"
+                                        is SyncResult.NoInternet -> "Couldn't check — no internet"
+                                        is SyncResult.Error -> "Couldn't check — no internet"
+                                        is SyncResult.Skipped -> "You're up to date"
+                                    }
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 8. Question pack version
+                    SupportNavigationRow(
+                        label = "Question pack version",
+                        icon = Icons.Default.Description,
+                        contentDescription = "Question pack version $manifestVersion",
+                        testTag = "settings_row_pack_version",
+                        trailingText = "v$manifestVersion",
+                        isClickable = false
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+
+                    // 9. Last checked
+                    SupportNavigationRow(
+                        label = "Last checked",
+                        icon = Icons.Default.HelpOutline,
+                        contentDescription = "Last checked ${formatTimeAgo(lastSyncAt)}",
+                        testTag = "settings_row_last_checked",
+                        trailingText = formatTimeAgo(lastSyncAt),
+                        isClickable = false
+                    )
+                }
+            }
+
             // Offline Status Card
             Card(
                 modifier = Modifier
@@ -529,218 +738,184 @@ fun SettingsScreen(
                 }
             }
 
-            // About & Support Section
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        RoundedCornerShape(16.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
+    // Rate DoomSQL In-Place & Play Store Dialog
+    if (showRateDialog) {
+        AlertDialog(
+            onDismissRequest = { showRateDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB800),
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Rate DoomSQL",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Enjoying your SQL interview practice? How would you rate your experience?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    .testTag("settings_about_support_card"),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.HelpOutline,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+
+                    // 5 Star Rating Selector
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        for (star in 1..5) {
+                            val isSelected = star <= selectedRating
+                            IconButton(
+                                onClick = { selectedRating = star },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .testTag("rate_star_$star")
+                            ) {
+                                Icon(
+                                    imageVector = if (isSelected) Icons.Default.Star else Icons.Outlined.Star,
+                                    contentDescription = "$star stars",
+                                    tint = if (isSelected) Color(0xFFFFB800) else MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Rating description text
+                    val ratingLabel = when (selectedRating) {
+                        5 -> "Loved it! ⭐⭐⭐⭐⭐"
+                        4 -> "Great experience! ⭐⭐⭐⭐"
+                        3 -> "It's good ⭐⭐⭐"
+                        2 -> "Needs improvement ⭐⭐"
+                        else -> "Not satisfied ⭐"
+                    }
+                    Text(
+                        text = ratingLabel,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (selectedRating >= 4) SolvedGreen else MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    if (selectedRating >= 4) {
+                        Button(
+                            onClick = {
+                                showRateDialog = false
+                                SupportHelper.openPlayStoreListing(context) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Unable to open Google Play Store")
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .testTag("rate_dialog_submit_play_store"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Rate on Google Play")
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                showRateDialog = false
+                                showContactDialog = true
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .testTag("rate_dialog_send_feedback"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Send Us Feedback")
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                showRateDialog = false
+                                SupportHelper.openPlayStoreListing(context) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Unable to open Google Play Store")
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp)
+                                .testTag("rate_dialog_rate_anyway"),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Rate on Play Store anyway")
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showRateDialog = false
+                            SupportHelper.openPlayStoreListing(context) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Unable to open Google Play Store")
+                                }
+                            }
+                        },
+                        modifier = Modifier.testTag("rate_dialog_direct_play_store")
+                    ) {
                         Text(
-                            text = "About & Support",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
+                            text = "Or open Google Play directly",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 1. Share DoomSQL
-                    SupportNavigationRow(
-                        label = "Share DoomSQL",
-                        icon = Icons.Default.Share,
-                        contentDescription = "Share DoomSQL with friends",
-                        testTag = "settings_row_share",
-                        onClick = {
-                            SupportHelper.shareApp(context) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Unable to share link")
-                                }
-                            }
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 2. Rate DoomSQL
-                    SupportNavigationRow(
-                        label = "Rate DoomSQL",
-                        icon = Icons.Default.Star,
-                        contentDescription = "Rate DoomSQL on Google Play",
-                        testTag = "settings_row_rate",
-                        onClick = {
-                            val activity = context as? Activity
-                            if (activity != null) {
-                                SupportHelper.requestInAppReview(activity) {
-                                    SupportHelper.openPlayStoreListing(context)
-                                }
-                            } else {
-                                SupportHelper.openPlayStoreListing(context)
-                            }
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 3. Report a bug / Contact support
-                    SupportNavigationRow(
-                        label = "Report a bug / Contact support",
-                        icon = Icons.Default.BugReport,
-                        contentDescription = "Report a bug or contact support team",
-                        testTag = "settings_row_support",
-                        onClick = {
-                            showContactDialog = true
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 4. Privacy Policy
-                    SupportNavigationRow(
-                        label = "Privacy Policy",
-                        icon = Icons.Default.Policy,
-                        contentDescription = "Read Privacy Policy",
-                        testTag = "settings_row_privacy",
-                        onClick = {
-                            SupportHelper.openCustomTabOrBrowser(context, AppLinks.PRIVACY_POLICY_URL) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Unable to open browser")
-                                }
-                            }
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 5. Terms of Service
-                    SupportNavigationRow(
-                        label = "Terms of Service",
-                        icon = Icons.Default.Description,
-                        contentDescription = "Read Terms of Service",
-                        testTag = "settings_row_terms",
-                        onClick = {
-                            SupportHelper.openCustomTabOrBrowser(context, AppLinks.TERMS_URL) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Unable to open browser")
-                                }
-                            }
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 6. App version (non-clickable, shows versionName)
-                    SupportNavigationRow(
-                        label = "App version",
-                        icon = Icons.Default.Info,
-                        contentDescription = "App version ${BuildConfig.VERSION_NAME}",
-                        testTag = "settings_row_version",
-                        trailingText = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                        isClickable = false
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 7. Check for new questions
-                    SupportNavigationRow(
-                        label = "Check for new questions",
-                        icon = Icons.Default.Sync,
-                        contentDescription = "Check for new questions online",
-                        testTag = "settings_row_check_questions",
-                        trailingText = if (isCheckingSync) "Checking…" else syncStatusText,
-                        isClickable = !isCheckingSync,
-                        onClick = {
-                            if (!isCheckingSync && questionRepository != null) {
-                                coroutineScope.launch {
-                                    isCheckingSync = true
-                                    syncStatusText = "Checking…"
-                                    val res = questionRepository.syncQuestions(isManual = true)
-                                    isCheckingSync = false
-                                    syncStatusText = when (res) {
-                                        is SyncResult.Success -> {
-                                            if (res.newCount > 0) "Added ${res.newCount} new questions"
-                                            else "Updated ${res.updatedCount} questions"
-                                        }
-                                        is SyncResult.UpToDate -> "You're up to date"
-                                        is SyncResult.NoInternet -> "Couldn't check — no internet"
-                                        is SyncResult.Error -> "Couldn't check — no internet"
-                                        is SyncResult.Skipped -> "You're up to date"
-                                    }
-                                }
-                            }
-                        }
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 8. Question pack version
-                    SupportNavigationRow(
-                        label = "Question pack version",
-                        icon = Icons.Default.Description,
-                        contentDescription = "Question pack version $manifestVersion",
-                        testTag = "settings_row_pack_version",
-                        trailingText = "v$manifestVersion",
-                        isClickable = false
-                    )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 2.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    )
-
-                    // 9. Last checked
-                    SupportNavigationRow(
-                        label = "Last checked",
-                        icon = Icons.Default.HelpOutline,
-                        contentDescription = "Last checked ${formatTimeAgo(lastSyncAt)}",
-                        testTag = "settings_row_last_checked",
-                        trailingText = formatTimeAgo(lastSyncAt),
-                        isClickable = false
-                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showRateDialog = false },
+                    modifier = Modifier.testTag("rate_dialog_dismiss")
+                ) {
+                    Text("Maybe Later")
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        )
     }
 
     // Reset Progress Confirmation Dialog

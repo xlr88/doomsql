@@ -54,17 +54,41 @@ object SupportHelper {
         }
     }
 
-    fun openPlayStoreListing(context: Context) {
+    fun openPlayStoreListing(
+        context: Context,
+        onNoAppFound: (() -> Unit)? = null
+    ) {
+        val packageName = context.packageName
+        val marketUri = Uri.parse("market://details?id=$packageName")
+        val webUri = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+
+        // 1. Try launching Google Play Store app directly
         try {
-            val marketIntent = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("market://details?id=${context.packageName}")
-            ).apply {
+            val marketIntent = Intent(Intent.ACTION_VIEW, marketUri).apply {
+                setPackage("com.android.vending")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(marketIntent)
+            return
+        } catch (_: Exception) {}
+
+        // 2. Try generic market intent
+        try {
+            val genericIntent = Intent(Intent.ACTION_VIEW, marketUri).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(genericIntent)
+            return
+        } catch (_: Exception) {}
+
+        // 3. Fallback to web browser
+        try {
+            val webIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(webIntent)
         } catch (e: Exception) {
-            openCustomTabOrBrowser(context, AppLinks.PLAY_STORE_URL)
+            onNoAppFound?.invoke()
         }
     }
 
