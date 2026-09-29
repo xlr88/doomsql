@@ -45,11 +45,13 @@ kotlinxSerializationJson = "1.8.0"
 sqliteBundled = "2.5.0"
 browser = "1.8.0"
 playReview = "2.0.2"
+playBilling = "7.1.1"
 
 
 [libraries]
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 play-review = { group = "com.google.android.play", name = "review-ktx", version.ref = "playReview" }
+play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

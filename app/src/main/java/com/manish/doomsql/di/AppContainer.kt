@@ -3,6 +3,7 @@ package com.manish.doomsql.di
 import android.content.Context
 import android.util.Log
 import androidx.room.Room
+import com.manish.doomsql.data.billing.BillingManager
 import com.manish.doomsql.data.engine.QuestionSelfCheck
 import com.manish.doomsql.data.engine.SandboxSqlEngine
 import com.manish.doomsql.data.engine.SqlExecutionEngine
@@ -21,6 +22,7 @@ interface AppContainer {
     val sqlEngine: SqlExecutionEngine
     val userPreferences: UserPreferencesRepository
     val authRepository: AuthRepository
+    val billingManager: BillingManager
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -49,6 +51,12 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val authRepository: AuthRepository by lazy {
         FirebaseAuthRepository(context.applicationContext)
+    }
+
+    override val billingManager: BillingManager by lazy {
+        BillingManager(context.applicationContext, userPreferences).apply {
+            startConnection()
+        }
     }
 
     init {
