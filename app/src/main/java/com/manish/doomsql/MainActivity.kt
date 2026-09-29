@@ -1,10 +1,21 @@
 package com.manish.doomsql
 
 import android.app.Activity
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +39,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -108,9 +120,33 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
     LaunchedEffect(Unit) {
         appContainer.repository.getQuestions()
         isAppReady = true
-        // Quietly check for new questions in background if 24h passed
+        // Check for new questions in background if connected
         launch {
             appContainer.repository.syncQuestions(isManual = false)
+        }
+    }
+
+    // Auto-sync when device connects to the internet
+    DisposableEffect(context) {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                coroutineScope.launch {
+                    appContainer.repository.syncQuestions(isManual = false)
+                }
+            }
+        }
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        try {
+            connectivityManager?.registerNetworkCallback(request, networkCallback)
+        } catch (_: Exception) {}
+
+        onDispose {
+            try {
+                connectivityManager?.unregisterNetworkCallback(networkCallback)
+            } catch (_: Exception) {}
         }
     }
 
@@ -125,12 +161,22 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
         return
     }
 
+    // Critical: Remember initial start destination so NavHost does not rebuild its graph
+    // when hasCompletedWelcome changes from false to true in DataStore.
+    val initialStartDestination = remember {
+        if (hasCompletedWelcome == true) Screen.Home.route else Screen.Welcome.route
+    }
+
     val showBottomBar = currentRoute in BottomNavItems.map { it.route } || currentRoute?.startsWith("questions") == true
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(200)) { it },
+                exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(150)) { it }
+            ) {
                 NavigationBar(
                     modifier = Modifier.testTag("bottom_nav_bar")
                 ) {
@@ -167,8 +213,12 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (hasCompletedWelcome == true) Screen.Home.route else Screen.Welcome.route,
-            modifier = Modifier.padding(innerPadding)
+            startDestination = initialStartDestination,
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(150)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+            popExitTransition = { fadeOut(animationSpec = tween(150)) }
         ) {
             // Home Screen
             composable(Screen.Home.route) {

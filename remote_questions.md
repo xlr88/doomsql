@@ -193,12 +193,57 @@ If you need to fix a typo, update a hint, or improve sample data:
 
 ---
 
-## 6. Useful Commands Cheat Sheet
+## 6. Useful Commands & Automated Tools Cheat Sheet
+
+### 1. Generating & Adding Questions to Remote Content Repo Automatically
+You do not need to create questions manually if you want quick additions:
+```bash
+# Generate 1 random question and add directly to remote content repository (questions/):
+python3 generate_sql_ques/generate_random_questions.py --count 1 --add-to-remote
+
+# Generate 3 MEDIUM or HARD questions and add directly to remote repo:
+python3 generate_sql_ques/generate_random_questions.py --count 3 --difficulty MEDIUM --add-to-remote
+python3 generate_sql_ques/generate_random_questions.py --count 2 --difficulty HARD --add-to-remote
+```
+*(This automatically creates the JSON file, tests the query in SQLite, updates `manifest.json`, increments `manifestVersion`, and displays git commands).*
+
+### 2. Interactive Wizard for Custom Questions
+```bash
+# Launch the interactive CLI wizard and save to remote content repo:
+python3 generate_sql_ques/add_question.py --interactive --remote
+
+# Or import an existing draft JSON into remote questions:
+python3 generate_sql_ques/add_question.py --file my_question.json --remote
+```
+
+### 3. Validating Questions & Rebuilding Manifest
+```bash
+# Validate all remote questions in SQLite:
+python3 generate_sql_ques/validate_questions.py --remote
+
+# Verify questions and rebuild manifest.json:
+python3 tools/build_manifest.py
+```
+
+### 4. Publishing to GitHub (No App Update Needed)
+```bash
+git add questions/
+git commit -m "Publish new SQL practice questions"
+git push origin main
+```
+
+### 5. In-App Auto-Update Behavior
+- **Auto-Sync on Internet Connection:** The app monitors device connectivity via Android `ConnectivityManager.NetworkCallback`. Whenever the device connects to Wi-Fi or mobile data, or when the app is opened, it automatically checks the manifest.
+- **Instant Reactive UI:** As soon as questions are downloaded and verified against the SQLite sandbox, `questionsFlow` emits and the questions list updates immediately without restarting the app.
+- **Manual Check:** In **Settings > About & Support > "Check for new questions"**, users can tap anytime to force an immediate refresh.
 
 | Task | Command |
 |---|---|
+| Auto-generate random remote questions | `python3 generate_sql_ques/generate_random_questions.py --count 1 --add-to-remote` |
+| Interactive custom question builder | `python3 generate_sql_ques/add_question.py --interactive --remote` |
+| Validate remote questions | `python3 generate_sql_ques/validate_questions.py --remote` |
 | Verify questions & build manifest | `python3 tools/build_manifest.py` |
-| Run GitHub Actions test locally | `python3 -m unittest discover tests` (or push branch) |
+| Push to GitHub | `git add questions/ && git commit -m "..." && git push origin main` |
 | Check manifest in browser | `https://cdn.jsdelivr.net/gh/<USER>/<REPO>@main/questions/manifest.json` |
 | View question in browser | `https://cdn.jsdelivr.net/gh/<USER>/<REPO>@main/questions/sql_001.json` |
 | Force fresh cache on jsDelivr | Append `?v=<timestamp>` query parameter to the URL |

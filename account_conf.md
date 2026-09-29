@@ -65,23 +65,16 @@ This guide walks you through setting up **Firebase Authentication** (Google Sign
 
 ---
 
-## Step 4: Enable Authentication Providers in Firebase Console
+## Step 4: Enable Authentication Provider in Firebase Console
 
 1. In the Firebase console left menu, go to **Build > Authentication**.
 2. Click **Get Started**.
 3. Under the **Sign-in method** tab:
-
-### 1. Enable Email/Password
-- Click **Email/Password**.
-- Switch **Enable** to ON.
-- Click **Save**.
-
-### 2. Enable Google Sign-In
-- Click **Google**.
-- Switch **Enable** to ON.
-- Choose a **Project support email** from the dropdown.
-- Click **Save**.
-- Under the Google provider configuration, Firebase automatically provisions a **Web SDK configuration (Web client ID)**.
+   - Click **Google** (do NOT enable Email/Password; DoomSQL uses modern Google Sign-In only).
+   - Switch **Enable** to ON.
+   - Choose a **Project support email** from the dropdown.
+   - Click **Save**.
+   - Under the Google provider configuration, Firebase automatically provisions a **Web SDK configuration (Web client ID)**.
 
 ---
 
