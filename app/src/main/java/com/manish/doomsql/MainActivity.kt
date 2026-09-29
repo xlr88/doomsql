@@ -348,6 +348,7 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
                     authRepository = appContainer.authRepository,
                     questionRepository = appContainer.repository,
                     userPreferences = appContainer.userPreferences,
+                    billingManager = appContainer.billingManager,
                     onResetAllProgress = {
                         coroutineScope.launch {
                             appContainer.repository.resetAllProgress()

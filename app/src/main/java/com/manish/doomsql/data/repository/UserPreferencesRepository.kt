@@ -21,7 +21,17 @@ open class UserPreferencesRepository(private val context: Context) {
         val KEY_LAST_SYNC_AT = androidx.datastore.preferences.core.longPreferencesKey("last_sync_at")
         val KEY_MANIFEST_VERSION = intPreferencesKey("manifest_version")
         val KEY_NEW_QUESTIONS_BANNER_COUNT = intPreferencesKey("new_questions_banner_count")
+        val KEY_IS_SUPPORTER = booleanPreferencesKey("is_supporter")
+        val KEY_TIPS_COUNT = intPreferencesKey("tips_count")
         const val DEFAULT_WEEKLY_GOAL = 10
+    }
+
+    open val isSupporterFlow: Flow<Boolean> = context.userDataStore.data.map { preferences ->
+        preferences[KEY_IS_SUPPORTER] ?: false
+    }
+
+    open val tipsCountFlow: Flow<Int> = context.userDataStore.data.map { preferences ->
+        preferences[KEY_TIPS_COUNT] ?: 0
     }
 
     open val weeklyGoalFlow: Flow<Int> = context.userDataStore.data.map { preferences ->
@@ -90,5 +100,13 @@ open class UserPreferencesRepository(private val context: Context) {
 
     open suspend fun getManifestVersion(): Int {
         return manifestVersionFlow.first()
+    }
+
+    open suspend fun recordTipSuccess() {
+        context.userDataStore.edit { preferences ->
+            preferences[KEY_IS_SUPPORTER] = true
+            val current = preferences[KEY_TIPS_COUNT] ?: 0
+            preferences[KEY_TIPS_COUNT] = current + 1
+        }
     }
 }
