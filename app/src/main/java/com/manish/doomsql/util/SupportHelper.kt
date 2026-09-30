@@ -127,18 +127,35 @@ object SupportHelper {
         body: String,
         onNoEmailApp: (email: String) -> Unit
     ) {
+        val targetEmail = AppLinks.SUPPORT_EMAIL
         try {
-            val uri = Uri.parse("mailto:${AppLinks.SUPPORT_EMAIL}").buildUpon()
-                .appendQueryParameter("subject", subject)
-                .appendQueryParameter("body", body)
-                .build()
+            // mailto URI with encoded parameters
+            val encodedSubject = Uri.encode(subject)
+            val encodedBody = Uri.encode(body)
+            val mailtoUri = Uri.parse("mailto:$targetEmail?subject=$encodedSubject&body=$encodedBody")
 
-            val emailIntent = Intent(Intent.ACTION_SENDTO, uri).apply {
+            val emailIntent = Intent(Intent.ACTION_SENDTO, mailtoUri).apply {
+                // Setting EXTRA_EMAIL ensures Gmail and all mail apps populate the 'To' field
+                putExtra(Intent.EXTRA_EMAIL, arrayOf(targetEmail))
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_TEXT, body)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(emailIntent)
         } catch (e: Exception) {
-            onNoEmailApp(AppLinks.SUPPORT_EMAIL)
+            try {
+                // Secondary fallback: generic ACTION_SENDTO with mailto:
+                val fallbackIntent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse("mailto:")
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(targetEmail))
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(fallbackIntent)
+            } catch (e2: Exception) {
+                onNoEmailApp(targetEmail)
+            }
         }
     }
 

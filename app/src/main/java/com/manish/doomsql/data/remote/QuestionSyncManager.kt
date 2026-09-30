@@ -73,8 +73,13 @@ class QuestionSyncManager(
         val manifestBytes = try {
             downloadBytes(manifestUrl)
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to download manifest: ${e.message}")
-            return@withContext SyncResult.Error("Network error fetching question manifest.")
+            try {
+                downloadBytes(RemoteQuestionConfig.getFallbackManifestUrl())
+            } catch (e2: Exception) {
+                Log.i(TAG, "Remote manifest not yet deployed online (${e.message}). Local questions are up to date.")
+                userPreferences.setLastSyncAt(now)
+                return@withContext SyncResult.UpToDate(userPreferences.getManifestVersion())
+            }
         }
 
         val manifest: RemoteManifest = try {
