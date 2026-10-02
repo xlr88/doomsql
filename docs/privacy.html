@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - DoomSQL</title>
+  <meta name="description" content="Privacy Policy for DoomSQL - Interactive Offline SQL Practice App">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --accent: #22c55e;
+      --border: #334155;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --primary: #0284c7;
+        --accent: #16a34a;
+        --border: #e2e8f0;
+      }
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 24px 16px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .effective-date {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 28px 0 12px;
+      color: var(--text);
+      border-left: 4px solid var(--primary);
+      padding-left: 12px;
+    }
+    p, ul {
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    ul {
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    strong {
+      color: var(--text);
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .highlight-box {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      padding: 16px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    .highlight-box p {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+    }
+    footer {
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">Legal Document</span>
+      <h1>Privacy Policy for DoomSQL</h1>
+      <p class="effective-date">Last Updated: September 29, 2026</p>
+    </header>
+
+    <div class="highlight-box">
+      <p><strong>Privacy First Guarantee:</strong> DoomSQL executes all SQL practice queries in a private, in-memory SQLite sandbox entirely on your device. We do not sell your personal data, track your browsing across apps, or serve third-party advertising.</p>
+    </div>
+
+    <h2>1. Introduction</h2>
+    <p>This Privacy Policy explains how <strong>DoomSQL</strong> ("we", "our", or "the App") collects, uses, stores, and protects information when you use our Android mobile application. By using DoomSQL, you agree to the collection and use of information in accordance with this policy.</p>
+
+    <h2>2. Information We Collect</h2>
+    
+    <p><strong>A. Offline Usage (No Account Required)</strong></p>
+    <p>You can use DoomSQL 100% offline without creating an account or providing any personal information. In offline mode:</p>
+    <ul>
+      <li>All SQL practice queries, solution drafts, and solved question milestones are stored locally in private device storage (Android Room Database).</li>
+      <li>No personal data is sent to our servers.</li>
+    </ul>
+
+    <p><strong>B. Optional Google Sign-In & Cloud Sync</strong></p>
+    <p>If you choose to sign in using Google Sign-In to back up your progress across devices, we collect through Firebase Authentication:</p>
+    <ul>
+      <li><strong>Google Account Information:</strong> Your display name, email address, profile photo URL, and unique Firebase User ID.</li>
+      <li><strong>Practice Progress:</strong> Which questions you have completed, your solve timestamps, and weekly goals.</li>
+    </ul>
+
+    <p><strong>C. Developer Tips & In-App Purchases</strong></p>
+    <p>If you choose to support the developer by sending a tip, transactions are processed solely by <strong>Google Play In-App Billing</strong>. DoomSQL never collects, sees, or stores your credit card numbers, UPI PINs, or bank account details. All financial transactions are subject to Google Play's Terms of Service and Privacy Policy.</p>
+
+    <h2>3. How We Use Your Information</h2>
+    <p>We use collected data solely for the following operational purposes:</p>
+    <ul>
+      <li>To restore and synchronize your question solve progress across your Android devices when signed in.</li>
+      <li>To download and verify new SQL practice questions from our public content manifest via HTTPS.</li>
+      <li>To grant your in-app "⭐ Supporter" badge when you send a tip via Google Play Billing.</li>
+      <li>To respond to your support inquiries, bug reports, and feedback emails.</li>
+    </ul>
+
+    <h2>4. SQL Engine & Data Privacy</h2>
+    <p>DoomSQL features an embedded, sandboxed SQLite engine (bundled SQLite 3.46 with <code>PRAGMA query_only = ON</code>):</p>
+    <ul>
+      <li>Every query runs in a transient, in-memory (<code>:memory:</code>) database instance.</li>
+      <li>Your SQL queries and practice answers are processed purely on your local device CPU and are never uploaded to any external server or LLM.</li>
+    </ul>
+
+    <h2>5. Third-Party Services</h2>
+    <p>DoomSQL utilizes the following trusted Google services to provide core functionality:</p>
+    <ul>
+      <li><strong>Google Play Services:</strong> Core application APIs, in-app review prompts, and system integrity.</li>
+      <li><strong>Google Play In-App Billing:</strong> Processing tips and donations (accepts UPI, cards, and net banking). <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></li>
+      <li><strong>Firebase Authentication:</strong> Secure Google Identity Services sign-in. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Privacy Notice</a></li>
+    </ul>
+
+    <h2>6. Data Retention and Account Deletion</h2>
+    <p>You have full control over your personal data at all times:</p>
+    <ul>
+      <li><strong>In-App One-Tap Deletion:</strong> In the App Settings, tap <em>"Delete Account"</em> to permanently remove your user profile and all cloud-synced question progress from our database.</li>
+      <li><strong>Reset Practice Data:</strong> You can clear all local solve records and drafts at any time using <em>"Reset All Practice Progress"</em>.</li>
+      <li><strong>Web Deletion Request:</strong> You can also request complete account and data removal online at <a href="https://xlr88.github.io/delete-account.html">https://xlr88.github.io/delete-account.html</a> or by emailing <a href="mailto:omkarmaduguri000@proton.me">omkarmaduguri000@proton.me</a>.</li>
+    </ul>
+
+    <h2>7. Children's Privacy</h2>
+    <p>DoomSQL is an educational tool designed for software engineering interview preparation and does not knowingly collect personally identifiable information from children under the age of 13. If you believe a child has provided us with personal data, please contact us immediately.</p>
+
+    <h2>8. Changes to This Privacy Policy</h2>
+    <p>We may update our Privacy Policy periodically. We will notify you of any changes by posting the updated Privacy Policy on this page and updating the "Last Updated" date at the top.</p>
+
+    <h2>9. Contact Us</h2>
+    <p>If you have any questions, suggestions, or requests regarding this Privacy Policy or your data, please contact us:</p>
+    <ul>
+      <li><strong>Email:</strong> <a href="mailto:omkarmaduguri000@proton.me">omkarmaduguri000@proton.me</a></li>
+      <li><strong>Developer Website:</strong> <a href="https://xlr88.github.io">https://xlr88.github.io</a></li>
+    </ul>
+
+    <footer>
+      <span>&copy; 2026 DoomSQL. All rights reserved.</span>
+      <span>
+        <a href="terms.html">Terms of Service</a> &bull; 
+        <a href="delete-account.html">Delete Account</a>
+      </span>
+    </footer>
+  </div>
+</body>
+</html>
