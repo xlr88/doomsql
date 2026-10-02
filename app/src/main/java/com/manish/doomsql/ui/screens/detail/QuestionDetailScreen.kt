@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +62,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -268,20 +271,42 @@ fun QuestionDetailScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
+                val pagerState = rememberPagerState(initialPage = uiState.selectedTabIndex) { 2 }
+
+                // Synchronize external programmatic tab selections (e.g. Run button switches to Editor tab)
+                LaunchedEffect(uiState.selectedTabIndex) {
+                    if (pagerState.currentPage != uiState.selectedTabIndex) {
+                        pagerState.animateScrollToPage(uiState.selectedTabIndex)
+                    }
+                }
+
+                // Synchronize swipe gesture between tabs back to ViewModel
+                LaunchedEffect(pagerState.currentPage) {
+                    if (uiState.selectedTabIndex != pagerState.currentPage) {
+                        onTabSelected(pagerState.currentPage)
+                    }
+                }
+
                 // Tab Row: Problem & Editor
                 TabRow(
-                    selectedTabIndex = uiState.selectedTabIndex,
+                    selectedTabIndex = pagerState.currentPage,
                     containerColor = MaterialTheme.colorScheme.surface
                 ) {
                     Tab(
-                        selected = uiState.selectedTabIndex == 0,
-                        onClick = { onTabSelected(0) },
+                        selected = pagerState.currentPage == 0,
+                        onClick = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(0) }
+                            onTabSelected(0)
+                        },
                         text = { Text("Problem", fontWeight = FontWeight.SemiBold) },
                         modifier = Modifier.testTag("tab_problem")
                     )
                     Tab(
-                        selected = uiState.selectedTabIndex == 1,
-                        onClick = { onTabSelected(1) },
+                        selected = pagerState.currentPage == 1,
+                        onClick = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                            onTabSelected(1)
+                        },
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Editor", fontWeight = FontWeight.SemiBold)
@@ -300,24 +325,34 @@ fun QuestionDetailScreen(
                     )
                 }
 
-                // Tab Content
-                if (uiState.selectedTabIndex == 0) {
-                    ProblemContent(
-                        question = question,
-                        isSolutionVisible = uiState.isSolutionVisible,
-                        onToggleSolutionVisibility = onToggleSolutionVisibility
-                    )
-                } else {
-                    EditorContent(
-                        uiState = uiState,
-                        onEditorValueChanged = onEditorValueChanged,
-                        onDismissExecutionStatus = onDismissExecutionStatus,
-                        onNavigateToNextQuestion = onNavigateToNextQuestion,
-                        onClearQuery = onClearEditor,
-                        onFormatSql = onFormatEditor,
-                        onUndo = onUndo,
-                        onRedo = onRedo
-                    )
+                // HorizontalPager allowing swipe right and left between Problem and Editor
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) { page ->
+                    when (page) {
+                        0 -> {
+                            ProblemContent(
+                                question = question,
+                                isSolutionVisible = uiState.isSolutionVisible,
+                                onToggleSolutionVisibility = onToggleSolutionVisibility
+                            )
+                        }
+                        1 -> {
+                            EditorContent(
+                                uiState = uiState,
+                                onEditorValueChanged = onEditorValueChanged,
+                                onDismissExecutionStatus = onDismissExecutionStatus,
+                                onNavigateToNextQuestion = onNavigateToNextQuestion,
+                                onClearQuery = onClearEditor,
+                                onFormatSql = onFormatEditor,
+                                onUndo = onUndo,
+                                onRedo = onRedo
+                            )
+                        }
+                    }
                 }
             }
         }
