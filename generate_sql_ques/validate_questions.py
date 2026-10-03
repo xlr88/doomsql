@@ -130,15 +130,11 @@ def main():
     import glob
 
     parser = argparse.ArgumentParser(description="DoomSQL Question Validator")
-    parser.add_argument("--remote", "-r", action="store_true", help="Validate remote content repository questions/ folder")
     parser.add_argument("--dir", "-d", help="Custom directory containing questions to validate")
     args = parser.parse_args()
 
     if args.dir:
         target_dir = os.path.abspath(args.dir)
-        files_to_validate = sorted(glob.glob(os.path.join(target_dir, "sql_*.json")))
-    elif args.remote:
-        target_dir = os.path.join(PROJECT_ROOT, "questions")
         files_to_validate = sorted(glob.glob(os.path.join(target_dir, "sql_*.json")))
     else:
         target_dir = QUESTIONS_DIR

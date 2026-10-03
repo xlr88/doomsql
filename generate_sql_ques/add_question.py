@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
 DoomSQL - Question Builder & Validator CLI
-Automatically generates, tests, and inserts new SQL questions into either:
-  1. Local bundled assets: app/src/main/assets/questions/ (default)
-  2. Remote content repo:  questions/ (via --remote), updating manifest.json
+Tests and inserts new SQL questions into the questions bundled inside the APK:
+  app/src/main/assets/questions/ (and registers them in index.json).
+
+Remote questions (delivered without an app update) live in the separate
+doomsql-content repo — see gen_sql_ques.md there.
 
 Usage:
   python3 add_question.py --interactive
-  python3 add_question.py --interactive --remote
   python3 add_question.py --file my_question.json
-  python3 add_question.py --file my_question.json --remote
 """
 
 import os
@@ -18,15 +18,12 @@ import glob
 import json
 import sqlite3
 import argparse
-import subprocess
 
 # Resolve paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 ASSETS_QUESTIONS_DIR = os.path.join(PROJECT_ROOT, "app", "src", "main", "assets", "questions")
 INDEX_PATH = os.path.join(ASSETS_QUESTIONS_DIR, "index.json")
-REMOTE_QUESTIONS_DIR = os.path.join(PROJECT_ROOT, "questions")
-BUILD_MANIFEST_SCRIPT = os.path.join(PROJECT_ROOT, "tools", "build_manifest.py")
 
 
 def validate_and_compute_expected_output(question_data: dict) -> dict:
@@ -109,11 +106,11 @@ def get_next_question_id(target_dir: str) -> str:
     return f"sql_{next_num:03d}"
 
 
-def save_question(question_data: dict, filename: str = None, is_remote: bool = False):
+def save_question(question_data: dict, filename: str = None):
     """
     Saves question JSON into the target folder and updates index or manifest.
     """
-    target_dir = REMOTE_QUESTIONS_DIR if is_remote else ASSETS_QUESTIONS_DIR
+    target_dir = ASSETS_QUESTIONS_DIR
     os.makedirs(target_dir, exist_ok=True)
 
     # 1. Determine ID and filename
@@ -143,38 +140,23 @@ def save_question(question_data: dict, filename: str = None, is_remote: bool = F
         json.dump(question_data, f, indent=2, ensure_ascii=False)
     print(f"[✓] Saved question file: {target_file}")
 
-    if is_remote:
-        # Rebuild manifest.json
-        if os.path.exists(BUILD_MANIFEST_SCRIPT):
-            print("[*] Rebuilding questions/manifest.json...")
-            res = subprocess.run([sys.executable, BUILD_MANIFEST_SCRIPT], capture_output=True, text=True)
-            if res.returncode == 0:
-                print(res.stdout.strip())
-                print("[✓] Remote manifest updated and verified!")
-                print("\n🚀 Next steps to publish to users (no app update needed):")
-                print("   git add questions/")
-                print(f"   git commit -m \"Add question {q_id}: {question_data.get('title', '')}\"")
-                print("   git push origin main")
-            else:
-                print(f"[!] Warning: manifest build failed:\n{res.stderr}", file=sys.stderr)
+    # 4. Update index.json in assets
+    index_list = []
+    if os.path.exists(INDEX_PATH):
+        with open(INDEX_PATH, "r", encoding="utf-8") as f:
+            index_list = json.load(f)
+
+    if filename not in index_list:
+        index_list.append(filename)
+        with open(INDEX_PATH, "w", encoding="utf-8") as f:
+            json.dump(index_list, f, indent=2, ensure_ascii=False)
+        print(f"[✓] Added '{filename}' to index.json (Total bundled questions: {len(index_list)})")
     else:
-        # 4. Update index.json in assets
-        index_list = []
-        if os.path.exists(INDEX_PATH):
-            with open(INDEX_PATH, "r", encoding="utf-8") as f:
-                index_list = json.load(f)
-
-        if filename not in index_list:
-            index_list.append(filename)
-            with open(INDEX_PATH, "w", encoding="utf-8") as f:
-                json.dump(index_list, f, indent=2, ensure_ascii=False)
-            print(f"[✓] Added '{filename}' to index.json (Total bundled questions: {len(index_list)})")
-        else:
-            print(f"[*] '{filename}' already listed in index.json (Total bundled questions: {len(index_list)})")
+        print(f"[*] '{filename}' already listed in index.json (Total bundled questions: {len(index_list)})")
 
 
-def interactive_mode(is_remote: bool = False):
-    dest_name = "Remote CDN Content Repo (questions/)" if is_remote else "Local Bundled Assets (app/src/.../assets/questions/)"
+def interactive_mode():
+    dest_name = "Bundled assets (app/src/main/assets/questions/)"
     print(f"=== DoomSQL Interactive Question Builder [{dest_name}] ===")
     title = input("Question Title: ").strip()
     difficulty = input("Difficulty (EASY / MEDIUM / HARD) [EASY]: ").strip().upper() or "EASY"
@@ -237,26 +219,25 @@ def interactive_mode(is_remote: bool = False):
         "explanation": explanation
     }
 
-    save_question(question_data, is_remote=is_remote)
+    save_question(question_data)
 
 
 def main():
     parser = argparse.ArgumentParser(description="DoomSQL Question Generator & Uploader")
     parser.add_argument("--file", "-f", help="Path to question JSON file to add")
     parser.add_argument("--interactive", "-i", action="store_true", help="Launch interactive step-by-step wizard")
-    parser.add_argument("--remote", "-r", action="store_true", help="Add to remote content repo (questions/) instead of bundled assets")
 
     args = parser.parse_args()
 
     if args.interactive:
-        interactive_mode(is_remote=args.remote)
+        interactive_mode()
     elif args.file:
         if not os.path.exists(args.file):
             print(f"[!] File not found: {args.file}", file=sys.stderr)
             sys.exit(1)
         with open(args.file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        save_question(data, os.path.basename(args.file), is_remote=args.remote)
+        save_question(data, os.path.basename(args.file))
     else:
         parser.print_help()
 

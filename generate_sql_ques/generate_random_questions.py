@@ -189,7 +189,7 @@ BLUEPRINTS = [
         "difficulty": "MEDIUM",
         "tags": ["case when", "conditional logic", "aggregate"],
         "title": "Movie Rating Classification",
-        "description": "Categorize movies based on their average score. A movie with score >= 8.5 is 'Masterpiece', between 7.0 and 8.4 is 'Recommended', and below 7.0 is 'Average'. Return title, score, and classification.",
+        "description": "Categorize movies based on their average score. A movie with score >= 8.5 is 'Masterpiece', between 7.0 and 8.4 is 'Recommended', and below 7.0 is 'Average'. Return title, score, and classification, ordered by score descending, then title ascending.",
         "orderSensitive": True,
         "tables": [
             {
@@ -218,7 +218,7 @@ BLUEPRINTS = [
         "difficulty": "HARD",
         "tags": ["window function", "dense_rank", "partition"],
         "title": "Top Earner in Each Branch",
-        "description": "For each bank branch, determine the employee who earns the highest salary. If there is a tie for the top salary, include all tied employees. Return branch, employee_name, and salary, ordered by branch ascending and salary descending.",
+        "description": "For each bank branch, determine the employee who earns the highest salary. If there is a tie for the top salary, include all tied employees. Return branch, employee_name, and salary, ordered by branch ascending, salary descending, then employee_name ascending.",
         "orderSensitive": True,
         "tables": [
             {
@@ -300,7 +300,6 @@ def main():
     parser.add_argument("--count", "-c", type=int, default=1, help="Number of questions to generate (default: 1)")
     parser.add_argument("--difficulty", "-d", choices=["EASY", "MEDIUM", "HARD", "ANY"], default="ANY", help="Filter by difficulty")
     parser.add_argument("--add-to-app", action="store_true", help="Automatically save to app/src/main/assets/questions/ and register in index.json")
-    parser.add_argument("--add-to-remote", action="store_true", help="Automatically save to remote content repo questions/ and rebuild manifest.json")
     parser.add_argument("--preview", action="store_true", help="Print question JSON to stdout without saving")
 
     args = parser.parse_args()
@@ -332,12 +331,9 @@ def main():
             print(json.dumps(q, indent=2))
 
         if args.add_to_app:
-            save_question(q, is_remote=False)
+            save_question(q)
             print("    [✓] Successfully added to DoomSQL assets and registered in index.json!")
 
-        if args.add_to_remote:
-            save_question(q, is_remote=True)
-            print("    [✓] Successfully added to remote questions and rebuilt manifest.json!")
 
     print("\nDone! 🎉")
 

@@ -1,4 +1,4 @@
-name: Verify questions
+name: Verify bundled questions
 on: [push, pull_request]
 
 jobs:
@@ -9,21 +9,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Verify every question and check the manifest is current
-        run: |
-          if [ -f questions/manifest.json ]; then
-            cp questions/manifest.json /tmp/committed.json
-            python tools/build_manifest.py
-            python - <<'PY'
-          import json, sys
-          a = json.load(open('/tmp/committed.json'))
-          b = json.load(open('questions/manifest.json'))
-          a.pop('generatedAt', None); b.pop('generatedAt', None)
-          a.pop('manifestVersion', None); b.pop('manifestVersion', None)
-          if a != b:
-              sys.exit("manifest.json is stale — run tools/build_manifest.py and commit it")
-          print("manifest.json is up to date")
-          PY
-          else
-            python tools/build_manifest.py
-          fi
+      - name: Run every bundled question's solution against SQLite
+        run: python generate_sql_ques/validate_questions.py

@@ -52,7 +52,7 @@ class QuestionSyncManager(
     suspend fun sync(isManual: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
 
-        // 1. 24-hour check for background / automatic launch sync
+        // 1. 24-hour gate for automatic syncs (launch / network reconnect)
         if (!isManual) {
             val lastSyncAt = userPreferences.getLastSyncAt()
             if (now - lastSyncAt < SYNC_INTERVAL_MS && lastSyncAt > 0) {
