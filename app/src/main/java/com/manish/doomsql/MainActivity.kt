@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -17,6 +18,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +61,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.manish.doomsql.data.local.entity.DailyActivityEntity
+import com.manish.doomsql.data.local.entity.QuestionProgressEntity
 import com.manish.doomsql.data.model.Question
 import com.manish.doomsql.ui.navigation.BottomNavItems
 import com.manish.doomsql.ui.navigation.Screen
@@ -167,231 +172,276 @@ fun DoomSqlApp(appContainer: com.manish.doomsql.di.AppContainer) {
         if (hasCompletedWelcome == true) Screen.Home.route else Screen.Welcome.route
     }
 
-    val showBottomBar = currentRoute in BottomNavItems.map { it.route } || currentRoute?.startsWith("questions") == true
+    NavHost(
+        navController = navController,
+        startDestination = initialStartDestination,
+        modifier = Modifier.fillMaxSize(),
+        enterTransition = { fadeIn(animationSpec = tween(200)) },
+        exitTransition = { fadeOut(animationSpec = tween(150)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+        popExitTransition = { fadeOut(animationSpec = tween(150)) }
+    ) {
+        // Main Tabs Screen with HorizontalPager supporting swipe and tap navigation
+        composable(Screen.Home.route) {
+            MainTabsScreen(
+                appContainer = appContainer,
+                allQuestions = allQuestions,
+                progressMap = progressMap,
+                dailyActivities = dailyActivities,
+                weeklyGoal = weeklyGoal,
+                onNavigateToQuestion = { id ->
+                    navController.navigate(Screen.QuestionDetail.createRoute(id))
+                }
+            )
+        }
+
+        // Question Detail Screen
+        composable(
+            route = Screen.QuestionDetail.route,
+            arguments = listOf(navArgument("questionId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val questionId = backStackEntry.arguments?.getString("questionId") ?: ""
+            val detailViewModel = viewModel(
+                key = "detail_$questionId"
+            ) {
+                QuestionDetailViewModel(
+                    questionId = questionId,
+                    repository = appContainer.repository,
+                    sqlEngine = appContainer.sqlEngine
+                )
+            }
+            val uiState by detailViewModel.uiState.collectAsState()
+
+            QuestionDetailScreen(
+                uiState = uiState,
+                onNavigateBack = {
+                    checkInAppReviewTrigger()
+                    navController.popBackStack()
+                },
+                onNavigateToNextQuestion = { nextId ->
+                    checkInAppReviewTrigger()
+                    navController.navigate(Screen.QuestionDetail.createRoute(nextId)) {
+                        popUpTo(Screen.Home.route)
+                    }
+                },
+                onTabSelected = detailViewModel::onTabSelected,
+                onEditorValueChanged = detailViewModel::onEditorValueChanged,
+                onDismissExecutionStatus = detailViewModel::onDismissExecutionStatus,
+                onRunQuery = detailViewModel::onRunQuery,
+                onToggleSolutionVisibility = detailViewModel::onToggleSolutionVisibility,
+                onDismissSolutionDialog = detailViewModel::onDismissSolutionDialog,
+                onConfirmShowSolution = detailViewModel::onConfirmShowSolution,
+                onClearEditor = detailViewModel::onClearEditor,
+                onFormatEditor = detailViewModel::onFormatEditor,
+                onDisposeSaveDraft = detailViewModel::saveDraftImmediately,
+                onUndo = detailViewModel::onUndo,
+                onRedo = detailViewModel::onRedo
+            )
+        }
+
+        // Direct routes for BottomNav items (in case of deep link / direct call)
+        composable(
+            route = Screen.Questions.route,
+            arguments = listOf(navArgument("difficulty") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) {
+            MainTabsScreen(
+                appContainer = appContainer,
+                allQuestions = allQuestions,
+                progressMap = progressMap,
+                dailyActivities = dailyActivities,
+                weeklyGoal = weeklyGoal,
+                initialPageIndex = 1,
+                onNavigateToQuestion = { id ->
+                    navController.navigate(Screen.QuestionDetail.createRoute(id))
+                }
+            )
+        }
+
+        composable(Screen.Progress.route) {
+            MainTabsScreen(
+                appContainer = appContainer,
+                allQuestions = allQuestions,
+                progressMap = progressMap,
+                dailyActivities = dailyActivities,
+                weeklyGoal = weeklyGoal,
+                initialPageIndex = 2,
+                onNavigateToQuestion = { id ->
+                    navController.navigate(Screen.QuestionDetail.createRoute(id))
+                }
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            MainTabsScreen(
+                appContainer = appContainer,
+                allQuestions = allQuestions,
+                progressMap = progressMap,
+                dailyActivities = dailyActivities,
+                weeklyGoal = weeklyGoal,
+                initialPageIndex = 3,
+                onNavigateToQuestion = { id ->
+                    navController.navigate(Screen.QuestionDetail.createRoute(id))
+                }
+            )
+        }
+
+        // Welcome Screen (shown on first launch with Google / Offline choices)
+        composable(Screen.Welcome.route) {
+            val welcomeViewModel: WelcomeViewModel = viewModel {
+                WelcomeViewModel(
+                    authRepository = appContainer.authRepository,
+                    userPreferences = appContainer.userPreferences
+                )
+            }
+            val welcomeUiState by welcomeViewModel.uiState.collectAsState()
+
+            WelcomeScreen(
+                uiState = welcomeUiState,
+                onContinueWithGoogle = { ctx ->
+                    welcomeViewModel.continueWithGoogle(ctx) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Welcome.route) { inclusive = true }
+                        }
+                    }
+                },
+                onPracticeOffline = {
+                    welcomeViewModel.practiceOffline {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Welcome.route) { inclusive = true }
+                        }
+                    }
+                },
+                onSkip = {
+                    welcomeViewModel.skip {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Welcome.route) { inclusive = true }
+                        }
+                    }
+                },
+                onDismissError = welcomeViewModel::onDismissError
+            )
+        }
+    }
+}
+
+@Composable
+fun MainTabsScreen(
+    appContainer: com.manish.doomsql.di.AppContainer,
+    allQuestions: List<Question>,
+    progressMap: Map<String, QuestionProgressEntity>,
+    dailyActivities: List<DailyActivityEntity>,
+    weeklyGoal: Int,
+    initialPageIndex: Int = 0,
+    onNavigateToQuestion: (String) -> Unit
+) {
+    val pagerState = rememberPagerState(initialPage = initialPageIndex) { BottomNavItems.size }
+    val coroutineScope = rememberCoroutineScope()
+
+    val questionsViewModel: QuestionsViewModel = viewModel {
+        QuestionsViewModel(
+            repository = appContainer.repository,
+            userPreferences = appContainer.userPreferences,
+            initialDifficulty = null
+        )
+    }
+
+    // Android back button: return to Home tab if on Questions, Progress, or Settings
+    BackHandler(enabled = pagerState.currentPage != 0) {
+        coroutineScope.launch {
+            pagerState.animateScrollToPage(0)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            AnimatedVisibility(
-                visible = showBottomBar,
-                enter = fadeIn(animationSpec = tween(200)) + slideInVertically(animationSpec = tween(200)) { it },
-                exit = fadeOut(animationSpec = tween(150)) + slideOutVertically(animationSpec = tween(150)) { it }
+            NavigationBar(
+                modifier = Modifier.testTag("bottom_nav_bar")
             ) {
-                NavigationBar(
-                    modifier = Modifier.testTag("bottom_nav_bar")
-                ) {
-                    BottomNavItems.forEach { screen ->
-                        val isSelected = when (screen) {
-                            Screen.Questions -> currentRoute?.startsWith("questions") == true
-                            else -> currentRoute == screen.route
-                        }
-                        val targetRoute = if (screen == Screen.Questions) "questions" else screen.route
-
-                        NavigationBarItem(
-                            icon = {
-                                screen.icon?.let { icon ->
-                                    Icon(imageVector = icon, contentDescription = screen.title)
-                                }
-                            },
-                            label = { Text(screen.title) },
-                            selected = isSelected,
-                            onClick = {
-                                navController.navigate(targetRoute) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            modifier = Modifier.testTag("nav_item_${screen.title.lowercase()}")
-                        )
-                    }
+                BottomNavItems.forEachIndexed { index, screen ->
+                    NavigationBarItem(
+                        icon = {
+                            screen.icon?.let { icon ->
+                                Icon(imageVector = icon, contentDescription = screen.title)
+                            }
+                        },
+                        label = { Text(screen.title) },
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        modifier = Modifier.testTag("nav_item_${screen.title.lowercase()}")
+                    )
                 }
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = initialStartDestination,
-            modifier = Modifier.padding(innerPadding),
-            enterTransition = { fadeIn(animationSpec = tween(200)) },
-            exitTransition = { fadeOut(animationSpec = tween(150)) },
-            popEnterTransition = { fadeIn(animationSpec = tween(200)) },
-            popExitTransition = { fadeOut(animationSpec = tween(150)) }
-        ) {
-            // Home Screen
-            composable(Screen.Home.route) {
-                HomeScreen(
-                    questions = allQuestions,
-                    progressMap = progressMap,
-                    dailyActivities = dailyActivities,
-                    weeklyGoal = weeklyGoal,
-                    onNavigateToQuestion = { id ->
-                        navController.navigate(Screen.QuestionDetail.createRoute(id))
-                    },
-                    onNavigateToQuestionsList = {
-                        navController.navigate("questions") {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) { page ->
+            when (page) {
+                0 -> {
+                    HomeScreen(
+                        questions = allQuestions,
+                        progressMap = progressMap,
+                        dailyActivities = dailyActivities,
+                        weeklyGoal = weeklyGoal,
+                        onNavigateToQuestion = onNavigateToQuestion,
+                        onNavigateToQuestionsList = {
+                            questionsViewModel.onDifficultyFilterSelected(null)
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1)
                             }
-                            launchSingleTop = true
-                        }
-                    },
-                    onNavigateToQuestionsFiltered = { difficulty ->
-                        navController.navigate(Screen.Questions.createRoute(difficulty)) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        },
+                        onNavigateToQuestionsFiltered = { difficulty ->
+                            questionsViewModel.onDifficultyFilterSelected(difficulty)
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1)
                             }
-                            launchSingleTop = true
                         }
-                    }
-                )
-            }
-
-            // Questions Screen
-            composable(
-                route = Screen.Questions.route,
-                arguments = listOf(navArgument("difficulty") {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
-                val diffStr = backStackEntry.arguments?.getString("difficulty")
-                val initialDifficulty = diffStr?.let {
-                    try {
-                        com.manish.doomsql.data.model.Difficulty.valueOf(it)
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-
-                val questionsViewModel = viewModel(key = "questions_$diffStr") {
-                    QuestionsViewModel(
-                        repository = appContainer.repository,
-                        userPreferences = appContainer.userPreferences,
-                        initialDifficulty = initialDifficulty
                     )
                 }
-                val uiState by questionsViewModel.uiState.collectAsState()
-
-                QuestionsListScreen(
-                    uiState = uiState,
-                    onSearchQueryChanged = questionsViewModel::onSearchQueryChanged,
-                    onDifficultyFilterSelected = questionsViewModel::onDifficultyFilterSelected,
-                    onStatusFilterSelected = questionsViewModel::onStatusFilterSelected,
-                    onDismissBanner = questionsViewModel::onDismissBanner,
-                    onNavigateToQuestion = { id ->
-                        navController.navigate(Screen.QuestionDetail.createRoute(id))
-                    }
-                )
-            }
-
-            // Question Detail Screen
-            composable(
-                route = Screen.QuestionDetail.route,
-                arguments = listOf(navArgument("questionId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val questionId = backStackEntry.arguments?.getString("questionId") ?: ""
-                val detailViewModel = viewModel(
-                    key = "detail_$questionId"
-                ) {
-                    QuestionDetailViewModel(
-                        questionId = questionId,
-                        repository = appContainer.repository,
-                        sqlEngine = appContainer.sqlEngine
+                1 -> {
+                    val uiState by questionsViewModel.uiState.collectAsState()
+                    QuestionsListScreen(
+                        uiState = uiState,
+                        onSearchQueryChanged = questionsViewModel::onSearchQueryChanged,
+                        onDifficultyFilterSelected = questionsViewModel::onDifficultyFilterSelected,
+                        onStatusFilterSelected = questionsViewModel::onStatusFilterSelected,
+                        onDismissBanner = questionsViewModel::onDismissBanner,
+                        onNavigateToQuestion = onNavigateToQuestion
                     )
                 }
-                val uiState by detailViewModel.uiState.collectAsState()
-
-                QuestionDetailScreen(
-                    uiState = uiState,
-                    onNavigateBack = {
-                        checkInAppReviewTrigger()
-                        navController.popBackStack()
-                    },
-                    onNavigateToNextQuestion = { nextId ->
-                        checkInAppReviewTrigger()
-                        navController.navigate(Screen.QuestionDetail.createRoute(nextId)) {
-                            popUpTo(Screen.Questions.route)
-                        }
-                    },
-                    onTabSelected = detailViewModel::onTabSelected,
-                    onEditorValueChanged = detailViewModel::onEditorValueChanged,
-                    onDismissExecutionStatus = detailViewModel::onDismissExecutionStatus,
-                    onRunQuery = detailViewModel::onRunQuery,
-                    onToggleSolutionVisibility = detailViewModel::onToggleSolutionVisibility,
-                    onDismissSolutionDialog = detailViewModel::onDismissSolutionDialog,
-                    onConfirmShowSolution = detailViewModel::onConfirmShowSolution,
-                    onClearEditor = detailViewModel::onClearEditor,
-                    onFormatEditor = detailViewModel::onFormatEditor,
-                    onDisposeSaveDraft = detailViewModel::saveDraftImmediately,
-                    onUndo = detailViewModel::onUndo,
-                    onRedo = detailViewModel::onRedo
-                )
-            }
-
-            // Progress Screen
-            composable(Screen.Progress.route) {
-                ProgressScreen(
-                    questions = allQuestions,
-                    progressMap = progressMap,
-                    dailyActivities = dailyActivities,
-                    weeklyGoal = weeklyGoal
-                )
-            }
-
-            // Settings Screen
-            composable(Screen.Settings.route) {
-                SettingsScreen(
-                    authRepository = appContainer.authRepository,
-                    questionRepository = appContainer.repository,
-                    userPreferences = appContainer.userPreferences,
-                    billingManager = appContainer.billingManager,
-                    onResetAllProgress = {
-                        coroutineScope.launch {
-                            appContainer.repository.resetAllProgress()
-                        }
-                    }
-                )
-            }
-
-            // Welcome Screen (shown on first launch with Google / Offline choices)
-            composable(Screen.Welcome.route) {
-                val welcomeViewModel: WelcomeViewModel = viewModel {
-                    WelcomeViewModel(
+                2 -> {
+                    ProgressScreen(
+                        questions = allQuestions,
+                        progressMap = progressMap,
+                        dailyActivities = dailyActivities,
+                        weeklyGoal = weeklyGoal
+                    )
+                }
+                3 -> {
+                    SettingsScreen(
                         authRepository = appContainer.authRepository,
-                        userPreferences = appContainer.userPreferences
+                        questionRepository = appContainer.repository,
+                        userPreferences = appContainer.userPreferences,
+                        billingManager = appContainer.billingManager,
+                        onResetAllProgress = {
+                            coroutineScope.launch {
+                                appContainer.repository.resetAllProgress()
+                            }
+                        }
                     )
                 }
-                val welcomeUiState by welcomeViewModel.uiState.collectAsState()
-
-                WelcomeScreen(
-                    uiState = welcomeUiState,
-                    onContinueWithGoogle = { ctx ->
-                        welcomeViewModel.continueWithGoogle(ctx) {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Welcome.route) { inclusive = true }
-                            }
-                        }
-                    },
-                    onPracticeOffline = {
-                        welcomeViewModel.practiceOffline {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Welcome.route) { inclusive = true }
-                            }
-                        }
-                    },
-                    onSkip = {
-                        welcomeViewModel.skip {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Welcome.route) { inclusive = true }
-                            }
-                        }
-                    },
-                    onDismissError = welcomeViewModel::onDismissError
-                )
             }
         }
     }

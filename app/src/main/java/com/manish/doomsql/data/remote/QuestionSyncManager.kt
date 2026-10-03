@@ -73,8 +73,14 @@ class QuestionSyncManager(
         val manifestBytes = try {
             downloadBytes(manifestUrl)
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to download manifest: ${e.message}")
-            return@withContext SyncResult.Error("Network error fetching question manifest.")
+            Log.w(TAG, "Primary manifest failed (${e.message}); trying fallback")
+            try {
+                downloadBytes(RemoteQuestionConfig.getFallbackManifestUrl())
+            } catch (e2: Exception) {
+                // Don't update lastSyncAt, so the next launch retries.
+                Log.w(TAG, "Fallback manifest failed too: ${e2.message}")
+                return@withContext SyncResult.Error("Couldn't reach the question server. Please try again later.")
+            }
         }
 
         val manifest: RemoteManifest = try {
@@ -115,8 +121,13 @@ class QuestionSyncManager(
             val questionBytes = try {
                 downloadBytes(questionUrl)
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to download question ${entry.id} from $questionUrl: ${e.message}")
-                continue
+                Log.w(TAG, "Primary download failed for ${entry.id}: ${e.message}; trying fallback")
+                try {
+                    downloadBytes(RemoteQuestionConfig.getFallbackQuestionUrl(entry.file))
+                } catch (e2: Exception) {
+                    Log.w(TAG, "Failed to download question ${entry.id}: ${e2.message}")
+                    continue
+                }
             }
 
             // D. Validation Step 1: SHA-256 Hash check
