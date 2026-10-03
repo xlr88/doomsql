@@ -1,6 +1,6 @@
 # DoomSQL - Firebase Authentication & Account Configuration Guide
 
-This guide walks you through setting up **Firebase Authentication** (Google Sign-In via Android Credential Manager + Email/Password) and optional cloud database sync for **DoomSQL**.
+This guide walks you through setting up **Firebase Authentication** (Google Sign-In only, via Android Credential Manager) and optional cloud database sync for **DoomSQL**.
 
 ---
 

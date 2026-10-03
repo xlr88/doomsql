@@ -33,10 +33,9 @@ DoomSQL is a modern, high-performance Android application built with Kotlin and 
 - **Difficulty Badges:** Categorized by EASY, MEDIUM, and HARD.
 - **Local Persistence with Room:** All user progress, streaks, and drafts are saved locally on the device using SQLite/Room.
 
-### 6. Optional Cloud Accounts (Firebase Auth)
+### 6. Optional Google Account (Firebase Auth)
 - **100% Offline-First:** The app runs completely offline without requiring any login or network connection.
-- **Google Sign-In:** Built with modern Android Credential Manager (`androidx.credentials` + `googleid`), strictly avoiding deprecated libraries.
-- **Email & Password:** Includes password validation, email verification notices, and password reset flows.
+- **Google Sign-In only:** The only sign-in option is "Continue with Google" (no email/password registration). Built with modern Android Credential Manager (`androidx.credentials` + `googleid`), strictly avoiding deprecated libraries.
 - **Google Play Compliant:** Supports both in-app account deletion (with optional local progress preservation) and external web deletion.
 
 ---
@@ -57,9 +56,9 @@ app/src/main/
 │   ├── di/                        # AppContainer and dependency injection
 │   ├── ui/
 │   │   ├── components/            # Reusable Compose widgets (EditorSpeedDial, TopBar, etc.)
-│   │   ├── navigation/            # Type-safe navigation routes (Home, Questions, Detail, Settings, SignIn)
+│   │   ├── navigation/            # Type-safe navigation routes (Welcome, Home, Questions, Detail, Settings)
 │   │   ├── screens/               # Screen composables and ViewModels
-│   │   │   ├── auth/              # SignInScreen and SignInViewModel
+│   │   │   ├── welcome/           # WelcomeScreen + WelcomeViewModel (Continue with Google / practice offline)
 │   │   │   ├── detail/            # QuestionDetailScreen and QuestionDetailViewModel
 │   │   │   ├── home/              # HomeScreen
 │   │   │   ├── progress/          # ProgressScreen
@@ -93,7 +92,7 @@ Refer to [account_conf.md](account_conf.md) for step-by-step instructions on:
 - Creating your Firebase project.
 - Adding package `com.manish.doomsql` with debug and release SHA certificates.
 - Placing `google-services.json` in `app/`.
-- Enabling Google and Email/Password authentication.
+- Enabling Google Sign-In (the only auth provider).
 
 ---
 
@@ -101,12 +100,12 @@ Refer to [account_conf.md](account_conf.md) for step-by-step instructions on:
 
 ### Build APK
 ```bash
-gradle assembleDebug
+./gradlew assembleDebug
 ```
 
 ### Run Unit & Robolectric Tests
 ```bash
-gradle :app:testDebugUnitTest
+./gradlew :app:testDebugUnitTest
 ```
 
 ### Validate Questions

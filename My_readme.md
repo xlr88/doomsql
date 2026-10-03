@@ -25,7 +25,7 @@ SHA-1: A5:41:0E:41:18:3A:65:4D:71:17:69:59:6F:9D:1E:76:74:C7:99:FF
 SHA-256: 55:B3:7F:AB:02:27:4A:47:EE:B8:5F:03:04:B4:6F:20:A2:D7:9C:24:41:F5:16:75:37:ED:00:E0:F6:6C:9E:70
 Placing google-services.json: Placing it in the app/ folder.
 Environment Variables: How WEB_CLIENT_ID can be configured via .env / Secrets panel if overriding defaults.
-Authentication Providers: Enabling Email/Password and Google Sign-In with Android Credential Manager.
+Authentication Provider: Google Sign-In only (via Android Credential Manager). Email/password registration is not used.
 Google Play Account Deletion: Explaining both the in-app deletion dialog and the web deletion URL (ACCOUNT_DELETION_URL in AppLinks.kt).
 Optional Firestore Sync: Instructions on connecting cloud sync down the road if desired.
 

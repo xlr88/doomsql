@@ -86,7 +86,7 @@ If you ever encounter stale caches after moving files or editing assets:
 ## 4. Debugging & Inspection in Android Studio
 
 ### 1. Setting Breakpoints
-- You can place breakpoints in any `.kt` file (e.g. `SqlSandboxEngine.kt`, `QuestionDetailViewModel.kt`, `SignInViewModel.kt`) by clicking the line number in the editor gutter.
+- You can place breakpoints in any `.kt` file (e.g. `SqlSandboxEngine.kt`, `QuestionDetailViewModel.kt`, `WelcomeViewModel.kt`) by clicking the line number in the editor gutter.
 - Click the **Debug (🐞)** button (`Shift + F9`) instead of Run.
 - The debugger pauses execution when queries are processed or when UI events trigger coroutine dispatches.
 
@@ -156,4 +156,4 @@ This tests every single question in the app by running its solution query in an 
 ## 6. Firebase & Offline Behavior
 
 - **No Setup Needed for Local Testing:** DoomSQL is **100% offline-first**. You can compile and test the app immediately without adding `google-services.json` or configuring Firebase.
-- **Enabling Accounts:** When you are ready to enable Google Sign-In and Email authentication, follow the step-by-step instructions in [account_conf.md](account_conf.md).
+- **Enabling Accounts:** When you are ready to enable Google Sign-In (the only sign-in option), follow the step-by-step instructions in [account_conf.md](account_conf.md).

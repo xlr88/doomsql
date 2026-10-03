@@ -26,7 +26,7 @@ object RemoteQuestionConfig {
      * Default GitHub repository serving content.
      * Can be customized or overridden if using a dedicated content repo.
      */
-    const val DEFAULT_REPO = "omkarmaduguri/doomsql-content"
+    const val DEFAULT_REPO = "xlr88/doomsql-content"
     const val BRANCH = "main"
 
     fun getManifestUrl(repo: String = DEFAULT_REPO): String {

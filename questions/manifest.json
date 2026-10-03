@@ -1,6 +1,6 @@
 {
-  "manifestVersion": 4,
-  "generatedAt": "2026-09-28T12:12:28+00:00",
+  "manifestVersion": 5,
+  "generatedAt": "2026-09-29T19:42:42+00:00",
   "questions": [
     {
       "id": "sql_001",
@@ -121,6 +121,16 @@
       "difficulty": "HARD",
       "title": "Consecutive Login Streaks",
       "addedAt": "2026-09-28"
+    },
+    {
+      "id": "sql_013",
+      "file": "sql_013.json",
+      "contentVersion": 1,
+      "sha256": "447e6e600133d1bd5651cdedc766cbbaa42cfa529e66ee0573f18a25e3e89b67",
+      "minAppVersionCode": 1,
+      "difficulty": "EASY",
+      "title": "High-Value Inventory Products",
+      "addedAt": "2026-09-30"
     }
   ]
 }
