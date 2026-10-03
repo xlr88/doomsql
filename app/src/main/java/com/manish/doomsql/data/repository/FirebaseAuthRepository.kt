@@ -2,6 +2,7 @@ package com.manish.doomsql.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -82,7 +83,9 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
         } catch (e: GetCredentialCancellationException) {
             AuthResult.Error("Google Sign-In was cancelled by user.", e)
         } catch (e: NoCredentialException) {
-            AuthResult.Error("No Google account found on this device. Please add a Google account in system settings.", e)
+            // Also thrown when this build's signing SHA-1 isn't registered in Firebase.
+            Log.w("AuthRepository", "NoCredentialException: ${e.message}", e)
+            AuthResult.Error("Google Sign-In isn't available right now. Check that a Google account is added on this device, then try again.", e)
         } catch (e: GetCredentialException) {
             Log.w("AuthRepository", "Credential Manager exception: ${e.message}", e)
             val msg = when {
@@ -104,6 +107,16 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
             _currentUser.value = null
         } catch (e: Exception) {
             Log.e("AuthRepository", "Sign out error", e)
+        }
+        clearGoogleCredentialState()
+    }
+
+    /** Tells Android to forget the chosen Google account, so the next sign-in shows the account picker. */
+    private suspend fun clearGoogleCredentialState() {
+        try {
+            CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+        } catch (e: Exception) {
+            Log.w("AuthRepository", "Could not clear credential state", e)
         }
     }
 
@@ -128,6 +141,7 @@ class FirebaseAuthRepository(private val context: Context) : AuthRepository {
             }
 
             _currentUser.value = null
+            clearGoogleCredentialState()
             if (alsoResetLocalProgress) {
                 onResetLocalProgress()
             }

@@ -191,7 +191,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Account & Cloud Sync",
+                                    text = "Account",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
@@ -1211,7 +1211,7 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Are you sure you want to permanently delete your DoomSQL account? This action removes your cloud user credentials and cannot be undone.",
+                        text = "Are you sure you want to permanently delete your DoomSQL account? This permanently removes your Google sign-in from DoomSQL and cannot be undone.",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
