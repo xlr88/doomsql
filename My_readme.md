@@ -14,15 +14,15 @@ The JSON schema (title, difficulty, tables, rows, solutionQuery, expectedOutput,
 How index.json orders the questions
 Automated Tooling in generate_sql_ques/:
 add_question.py: An interactive wizard and script. You provide the table schema and solution query; the script automatically spins up an in-memory SQLite sandbox, executes your query, computes the exact expectedOutput, saves the file, and updates index.json.
-validate_questions.py: Automated test suite that executes all questions against SQLite and verifies that every solution matches expected output. (All 12 current questions pass with 100% precision).
+validate_questions.py: Automated test suite that executes all questions against SQLite and verifies that every solution matches expected output. (All 20 bundled questions pass).
 question_template.json: Ready-to-use template for manual question creation.
 
 3. Firebase Authentication & Credentials Guide (account_conf.md)
 We created account_conf.md detailing:
-Firebase Console Project Setup: Registering the package name com.manish.doomsql.
+Firebase Console Project Setup: Registering the package name com.chaduvukondi.firstu.
 Certificate Fingerprints: Pre-extracted debug SHA-1 and SHA-256 fingerprints needed for Google Sign-In:
-SHA-1: A5:41:0E:41:18:3A:65:4D:71:17:69:59:6F:9D:1E:76:74:C7:99:FF
-SHA-256: 55:B3:7F:AB:02:27:4A:47:EE:B8:5F:03:04:B4:6F:20:A2:D7:9C:24:41:F5:16:75:37:ED:00:E0:F6:6C:9E:70
+SHA-1: 49:8A:C1:20:29:15:F7:30:1D:D2:65:3A:4D:18:99:DC:19:D9:B3:BA
+SHA-256: 31:94:12:12:F8:53:87:F3:F4:A2:04:1A:18:B1:E5:E3:ED:8B:2F:D4:B6:BB:78:DA:5E:74:BC:D4:49:01:1C:75
 Placing google-services.json: Placing it in the app/ folder.
 Environment Variables: How WEB_CLIENT_ID can be configured via .env / Secrets panel if overriding defaults.
 Authentication Provider: Google Sign-In only (via Android Credential Manager). Email/password registration is not used.

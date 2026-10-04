@@ -8,8 +8,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.manish.doomsql" />
-                  <option name="mobileSdkAppId" value="1:364063290508:android:4c7b84c821a10d6d4877a9" />
+                  <option name="appId" value="com.chaduvukondi.firstu" />
+                  <option name="mobileSdkAppId" value="1:364063290508:android:691c8910d098ad8a4877a9" />
                   <option name="projectId" value="doomsql" />
                   <option name="projectNumber" value="364063290508" />
                 </ConnectionSetting>

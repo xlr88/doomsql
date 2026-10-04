@@ -62,10 +62,10 @@ User's Android Device:
    │       └── verify.yml
    └── README.md
    ```
-3. Copy `tools/build_manifest.py` and `.github/workflows/verify.yml` from this project into your content repository.
+3. ✅ Done: the content repo is **https://github.com/xlr88/doomsql-content** (public). It holds `questions/`, `tools/`, `generate_sql_ques/` and the CI workflow. Its step-by-step guide is `gen_sql_ques.md`. The app repo no longer has `questions/` or `tools/`.
 4. In `RemoteQuestionConfig.kt` (in DoomSQL Android app), verify `DEFAULT_REPO` matches your GitHub username and repository name:
    ```kotlin
-   const val DEFAULT_REPO = "<YOUR_GITHUB_USERNAME>/doomsql-content"
+   const val DEFAULT_REPO = "xlr88/doomsql-content"
    ```
 
 ---
@@ -195,31 +195,33 @@ If you need to fix a typo, update a hint, or improve sample data:
 
 ## 6. Useful Commands & Automated Tools Cheat Sheet
 
+> Run all of these **inside the `doomsql-content` repo**, not the app repo. Full guide: `gen_sql_ques.md` in that repo.
+
 ### 1. Generating & Adding Questions to Remote Content Repo Automatically
 You do not need to create questions manually if you want quick additions:
 ```bash
 # Generate 1 random question and add directly to remote content repository (questions/):
-python3 generate_sql_ques/generate_random_questions.py --count 1 --add-to-remote
+python3 generate_sql_ques/generate_random_questions.py --count 1 --add
 
 # Generate 3 MEDIUM or HARD questions and add directly to remote repo:
-python3 generate_sql_ques/generate_random_questions.py --count 3 --difficulty MEDIUM --add-to-remote
-python3 generate_sql_ques/generate_random_questions.py --count 2 --difficulty HARD --add-to-remote
+python3 generate_sql_ques/generate_random_questions.py --count 3 --difficulty MEDIUM --add
+python3 generate_sql_ques/generate_random_questions.py --count 2 --difficulty HARD --add
 ```
 *(This automatically creates the JSON file, tests the query in SQLite, updates `manifest.json`, increments `manifestVersion`, and displays git commands).*
 
 ### 2. Interactive Wizard for Custom Questions
 ```bash
 # Launch the interactive CLI wizard and save to remote content repo:
-python3 generate_sql_ques/add_question.py --interactive --remote
+python3 generate_sql_ques/add_question.py --interactive
 
 # Or import an existing draft JSON into remote questions:
-python3 generate_sql_ques/add_question.py --file my_question.json --remote
+python3 generate_sql_ques/add_question.py --file drafts/my_question.json
 ```
 
 ### 3. Validating Questions & Rebuilding Manifest
 ```bash
 # Validate all remote questions in SQLite:
-python3 generate_sql_ques/validate_questions.py --remote
+python3 generate_sql_ques/validate_questions.py
 
 # Verify questions and rebuild manifest.json:
 python3 tools/build_manifest.py
@@ -239,9 +241,9 @@ git push origin main
 
 | Task | Command |
 |---|---|
-| Auto-generate random remote questions | `python3 generate_sql_ques/generate_random_questions.py --count 1 --add-to-remote` |
-| Interactive custom question builder | `python3 generate_sql_ques/add_question.py --interactive --remote` |
-| Validate remote questions | `python3 generate_sql_ques/validate_questions.py --remote` |
+| Auto-generate random remote questions | `python3 generate_sql_ques/generate_random_questions.py --count 1 --add` |
+| Interactive custom question builder | `python3 generate_sql_ques/add_question.py --interactive` |
+| Validate remote questions | `python3 generate_sql_ques/validate_questions.py` |
 | Verify questions & build manifest | `python3 tools/build_manifest.py` |
 | Push to GitHub | `git add questions/ && git commit -m "..." && git push origin main` |
 | Check manifest in browser | `https://cdn.jsdelivr.net/gh/<USER>/<REPO>@main/questions/manifest.json` |

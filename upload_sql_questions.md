@@ -1,5 +1,7 @@
 # Guide: How to Add & Upload New SQL Questions to DoomSQL
 
+> This covers questions **bundled inside the APK** (they need an app release). To publish questions **without an app update**, use the `doomsql-content` repo and its `gen_sql_ques.md`. Keep the two in sync: any question you bundle should also be in `doomsql-content` with the **same id and contentVersion**.
+
 This guide explains how SQL questions are stored in DoomSQL, how to manually create and edit them, and how to use the automated Python tools in `generate_sql_ques/` to generate, test, and register questions effortlessly.
 
 ---
@@ -14,7 +16,7 @@ app/src/main/assets/questions/
 ├── sql_001.json        <-- Question 1
 ├── sql_002.json        <-- Question 2
 ├── ...
-└── sql_012.json        <-- Question 12
+└── sql_020.json        <-- Question 20
 ```
 
 Whenever the app launches or loads the question catalog, it reads `index.json` to know which files to load and in what order.

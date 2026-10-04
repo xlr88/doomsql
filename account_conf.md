@@ -26,7 +26,7 @@ This guide walks you through setting up **Firebase Authentication** (Google Sign
 2. Enter the following details:
    - **Android package name (CRITICAL):**
      ```
-     com.manish.doomsql
+     com.chaduvukondi.firstu
      ```
      *(This MUST match the `applicationId` in `app/build.gradle.kts`)*
    - **App nickname:** `DoomSQL`
@@ -34,13 +34,15 @@ This guide walks you through setting up **Firebase Authentication** (Google Sign
      You **must** register certificate fingerprints for Google Sign-In to work.
 
 ### Debug Certificate Fingerprints for this project:
+(from `debug.keystore` in the repo root, which signs all debug builds. Check with:
+`keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey`)
 - **SHA-1:**
   ```
-  A5:41:0E:41:18:3A:65:4D:71:17:69:59:6F:9D:1E:76:74:C7:99:FF
+  49:8A:C1:20:29:15:F7:30:1D:D2:65:3A:4D:18:99:DC:19:D9:B3:BA
   ```
 - **SHA-256:**
   ```
-  55:B3:7F:AB:02:27:4A:47:EE:B8:5F:03:04:B4:6F:20:A2:D7:9C:24:41:F5:16:75:37:ED:00:E0:F6:6C:9E:70
+  31:94:12:12:F8:53:87:F3:F4:A2:04:1A:18:B1:E5:E3:ED:8B:2F:D4:B6:BB:78:DA:5E:74:BC:D4:49:01:1C:75
   ```
 
 > **Note for Production / Release Builds:**
@@ -125,7 +127,7 @@ If you want to sync progress to the cloud across devices:
 Google Play requires that any app offering account creation must allow users to delete their account:
 1. **In-App Deletion:** DoomSQL includes a **"Delete Account"** button in **Settings > Account** with a confirmation dialog. It permanently deletes the user's Firebase Auth record. A checkbox allows the user to choose whether to also reset local offline progress.
 2. **Web Deletion URL:** Google Play also requires an external web link where users can request account deletion outside the app.
-   - Open `app/src/main/java/com/manish/doomsql/config/AppLinks.kt`.
+   - Open `app/src/main/java/com/chaduvukondi/firstu/config/AppLinks.kt`.
    - Update `ACCOUNT_DELETION_URL` with your website's URL (e.g., `https://yourdomain.com/doomsql/delete-account`):
      ```kotlin
      const val ACCOUNT_DELETION_URL = "https://yourdomain.com/doomsql/delete-account"

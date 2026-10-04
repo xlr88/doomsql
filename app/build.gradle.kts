@@ -13,11 +13,11 @@ plugins {
 }
 
 android {
-  namespace = "com.manish.doomsql"
+  namespace = "com.chaduvukondi.firstu"
   compileSdk = 36
 
   defaultConfig {
-    applicationId = "com.manish.doomsql"
+    applicationId = "com.chaduvukondi.firstu"
     minSdk = 26
     targetSdk = 36
     versionCode = 1

@@ -46,7 +46,7 @@ DoomSQL is a modern, high-performance Android application built with Kotlin and 
 app/src/main/
 ├── assets/
 │   └── questions/                 # Question catalog and index.json
-├── java/com/manish/doomsql/
+├── java/com/chaduvukondi/firstu/
 │   ├── config/                    # Global constants and app web links
 │   ├── data/
 │   │   ├── engine/                # In-memory SQLite sandbox engine & diff comparator
@@ -90,7 +90,7 @@ We provide full automation scripts to generate, test, and insert questions.
 
 Refer to [account_conf.md](account_conf.md) for step-by-step instructions on:
 - Creating your Firebase project.
-- Adding package `com.manish.doomsql` with debug and release SHA certificates.
+- Adding package `com.chaduvukondi.firstu` with debug and release SHA certificates.
 - Placing `google-services.json` in `app/`.
 - Enabling Google Sign-In (the only auth provider).
 

@@ -105,7 +105,7 @@ To monitor application logs, SQLite execution feedback, and authentication statu
 1. Open the **Logcat** tab at the bottom of Android Studio (`Alt + 6` / `Cmd + 6`).
 2. Filter by package:
    ```
-   package:com.manish.doomsql
+   package:com.chaduvukondi.firstu
    ```
    or search for specific tags like `DoomSql` or `FirebaseAuthRepository`.
 
