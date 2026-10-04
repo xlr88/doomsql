@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "364063290508-45hre2l4hej7cpfehj9581mfltfiup3t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chaduvukondi.firstu",
+            "certificate_hash": "1d58651b8ffabec59b7fdfcf9cfc98b75f9e2fdc"
+          }
+        },
+        {
           "client_id": "364063290508-jmu3hgfgifv2idukamvgmfv237djf1l0.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
