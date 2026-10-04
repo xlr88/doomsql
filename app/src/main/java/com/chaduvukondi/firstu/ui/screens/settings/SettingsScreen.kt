@@ -169,9 +169,14 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            RoundedCornerShape(16.dp)
+                        )
                         .testTag("settings_account_signed_out_card"),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.surface
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -195,7 +200,7 @@ fun SettingsScreen(
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
-                                    text = "Sync your progress across all your devices.",
+                                    text = "Sign in with Google to save your account. Your progress stays on this device.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -226,6 +231,7 @@ fun SettingsScreen(
                             enabled = !isGoogleSigningIn,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 50.dp)
                                 .testTag("settings_sign_in_button"),
                             shape = RoundedCornerShape(10.dp)
                         ) {
@@ -254,9 +260,14 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            RoundedCornerShape(16.dp)
+                        )
                         .testTag("settings_account_signed_in_card"),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.surface
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -315,9 +326,9 @@ fun SettingsScreen(
 
                         HorizontalDivider()
 
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             OutlinedButton(
                                 onClick = {
@@ -327,17 +338,18 @@ fun SettingsScreen(
                                     }
                                 },
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
                                     .testTag("settings_sign_out_button"),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Logout,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Sign Out")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sign Out", maxLines = 1)
                             }
 
                             OutlinedButton(
@@ -352,7 +364,8 @@ fun SettingsScreen(
                                     brush = androidx.compose.ui.graphics.SolidColor(ErrorRed.copy(alpha = 0.5f))
                                 ),
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .heightIn(min = 48.dp)
                                     .testTag("settings_delete_account_button"),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
@@ -360,10 +373,10 @@ fun SettingsScreen(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
                                     tint = ErrorRed,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Delete Account", color = ErrorRed)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Delete Account", color = ErrorRed, maxLines = 1)
                             }
                         }
                     }
