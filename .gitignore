@@ -18,3 +18,7 @@ local.properties
 debug.keystore
 __pycache__/
 *.pyc
+
+# signing keys: never commit
+*.jks
+*.keystore

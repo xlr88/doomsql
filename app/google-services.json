@@ -41,43 +41,6 @@
           ]
         }
       }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:364063290508:android:4c7b84c821a10d6d4877a9",
-        "android_client_info": {
-          "package_name": "com.manish.doomsql"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "364063290508-3p04v14k7bat6tcp76es9jme9c8mdifk.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.manish.doomsql",
-            "certificate_hash": "498ac1202915f7301dd2653a4d1899dc19d9b3ba"
-          }
-        },
-        {
-          "client_id": "364063290508-7l639nat37817q50hs7n99428fntv3g9.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAP-M3NQ4CZbcA0s54sxsa6eb_kcRe_KYY"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "364063290508-7l639nat37817q50hs7n99428fntv3g9.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
     }
   ],
   "configuration_version": "1"
